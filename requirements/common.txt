@@ -11,3 +11,6 @@ requests==2.22.0
 mock==2.0.0
 
 iso8601
+
+# for messaging
+kombu
