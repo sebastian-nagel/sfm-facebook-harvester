@@ -51,7 +51,7 @@ class FacebookHarvester(BaseHarvester):
 
     def facebook_user_timeline(self, seed_id, username, nsid):
         """This function will scrape the user timeline"""
-        log.info("Harvesting user %s with seed_id %s.", username, seed_id)
+        log.debug("Harvesting user %s with seed_id %s.", username, seed_id)
         # make sure either username or nsid is present to start scraping
         assert username or nsid
 
@@ -71,7 +71,7 @@ class FacebookHarvester(BaseHarvester):
                 self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
 
         # now start scraping with facebook scraper
-        facebook_scraper.get_posts(facebook_account, pages = 1000, sleep = 0.9, extra_info = True, timeout = 20)
+        facebook_scraper.get_posts(nsid, pages = 1000, sleep = 0.9, extra_info = True, timeout = 20)
 
 
 
