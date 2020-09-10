@@ -34,7 +34,7 @@ class FacebookHarvester(BaseHarvester):
 
 
         if harvest_type == "Facebook Timeline Harvest":
-
+            print("Starting harvest")
             self.facebook_user_timeline
 
         else:
