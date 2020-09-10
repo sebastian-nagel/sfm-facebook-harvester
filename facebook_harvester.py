@@ -44,6 +44,8 @@ class FacebookHarvester(BaseHarvester):
     def facebook_users_timeline(self):
         """Several users"""
 
+        log.debug("Starting harvest.")
+
         for seed in self.message.get("seeds", []):   #todo
             self.facebook_user_timeline(seed.get("id"), seed.get("token"), seed.get("uid"))
 
@@ -60,7 +62,8 @@ class FacebookHarvester(BaseHarvester):
             pass
             if nsid:
                 # report back whether user id was found
-                pass # todo
+                facebook_scraper.get_posts(nsid, pages = 1000, sleep = 0.9, extra_info = True, timeout = 20)
+ # todo
 
             else:
                 msg = "NSID not found for user {}".format(username)
