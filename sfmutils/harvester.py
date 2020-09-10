@@ -199,10 +199,10 @@ class BaseHarvester(BaseConsumer):
         signal.signal(signal.SIGTERM, shutdown)
         signal.signal(signal.SIGINT, shutdown)
 
-        def pause(signal_number, stack_frame):
-            self.is_pause = True
+#        def pause(signal_number, stack_frame):
+#            self.is_pause = True
 
-        signal.signal(signal.SIGUSR1, pause)
+#        signal.signal(signal.SIGUSR1, pause)
 
         log.debug("Message is %s" % json.dumps(self.message, indent=4))
 

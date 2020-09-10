@@ -45,7 +45,7 @@ class FacebookHarvester(BaseHarvester):
         """Several users"""
 
         for seed in self.message.get("seeds", []):   #todo
-            self.facebook_user_timeline(seed.get("id"))
+            self.facebook_user_timeline(seed.get("id"), seed.get("token"), seed.get("uid"))
 
     def facebook_user_timeline(self, seed_id, username, nsid):
         """This function will scrape the user timeline"""
@@ -56,6 +56,7 @@ class FacebookHarvester(BaseHarvester):
         # Possibly look up username
         if username and not nsid:
             #todo lookup username
+
             pass
             if nsid:
                 # report back whether user id was found
