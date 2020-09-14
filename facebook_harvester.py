@@ -30,7 +30,7 @@ class FacebookHarvester(BaseHarvester):
         """
 
         # Dispatch message based on type
-        harvest_type = self.type
+        harvest_type = "Facebook Timeline Harvest"
         log.debug("Harvest type is %s", harvest_type)
 
 
