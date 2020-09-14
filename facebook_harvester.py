@@ -61,12 +61,11 @@ class FacebookHarvester(BaseHarvester):
         # Possibly look up username
         if username and not nsid:
             #todo lookup username
-
+            log.debug("No FB userid, retrieving it")
             pass
             if nsid:
                 # report back whether user id was found
-                print("And here 66")
-                facebook_scraper.get_posts(nsid, pages = 1000, sleep = 0.9, extra_info = True, timeout = 20)
+                facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
  # todo
 
             else:
