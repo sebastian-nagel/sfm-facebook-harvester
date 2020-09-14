@@ -74,7 +74,7 @@ class FacebookHarvester(BaseHarvester):
                 self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
 
         # now start scraping with facebook scraper
-        facebook_scraper.get_posts(nsid, pages = 1000, sleep = 0.9, extra_info = True, timeout = 20)
+        facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
 
 
 
