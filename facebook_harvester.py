@@ -30,13 +30,13 @@ class FacebookHarvester(BaseHarvester):
         """
 
         # Dispatch message based on type
-        harvest_type = "Facebook Timeline Harvest"
+        harvest_type = self.type
         log.debug("Harvest type is %s", harvest_type)
 
 
         if harvest_type == "Facebook Timeline Harvest":
-            print("Check 1")
-            self.facebook_users_timeline
+            log.debug("Starting timeline harvest")
+            self.facebook_users_timeline()
 
         else:
 
@@ -45,7 +45,7 @@ class FacebookHarvester(BaseHarvester):
     def facebook_users_timeline(self):
         """Several users"""
 
-        log.debug("Starting harvest.")
+        log.debug("Harvesting users with seeds %s", self.message.get("seeds"))
 
         for seed in self.message.get("seeds", []):   #todo
             self.facebook_user_timeline(seed_id = seed.get("id"), username = seed.get("token"), nsid = seed.get("uid"))
