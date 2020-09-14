@@ -428,6 +428,7 @@ class BaseHarvester(BaseConsumer):
 
         :return: the directory path
         """
+        print("Hapenned")
         path = os.path.join(self.working_path, "tmp", safe_string(self.message["id"]))
         if not os.path.exists(path):
             os.makedirs(path)
