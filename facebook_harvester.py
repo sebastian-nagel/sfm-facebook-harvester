@@ -23,10 +23,11 @@ class FacebookHarvester(BaseHarvester):
         self.http_errors = http_errors
 
     def harvest_seeds(self):
-        """Will start appropriate harvest - as of now this
+        """
+        Will start appropriate harvest - as of now this
         is unnecessary as timelines are the only fb types
-        bein harvested but this could change"""
-        # todo: create warc?
+        bein harvested but this could change
+        """
 
         # Dispatch message based on type
         harvest_type = "Facebook Timeline Harvest"
@@ -34,6 +35,7 @@ class FacebookHarvester(BaseHarvester):
 
 
         if harvest_type == "Facebook Timeline Harvest":
+            print("Check 1")
             self.facebook_users_timeline
 
         else:
@@ -47,6 +49,7 @@ class FacebookHarvester(BaseHarvester):
 
         for seed in self.message.get("seeds", []):   #todo
             self.facebook_user_timeline(seed_id = seed.get("id"), username = seed.get("token"), nsid = seed.get("uid"))
+
 
     def facebook_user_timeline(self, seed_id, username, nsid):
         """This function will scrape the user timeline"""
