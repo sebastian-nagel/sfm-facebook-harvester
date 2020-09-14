@@ -34,8 +34,7 @@ class FacebookHarvester(BaseHarvester):
 
 
         if harvest_type == "Facebook Timeline Harvest":
-            print("Starting harvest")
-            self.facebook_user_timeline
+            self.facebook_users_timeline
 
         else:
 
@@ -47,7 +46,7 @@ class FacebookHarvester(BaseHarvester):
         log.debug("Starting harvest.")
 
         for seed in self.message.get("seeds", []):   #todo
-            self.facebook_user_timeline(seed.get("id"), seed.get("token"), seed.get("uid"))
+            self.facebook_user_timeline(seed_id = seed.get("id"), username = seed.get("token"), nsid = seed.get("uid"))
 
     def facebook_user_timeline(self, seed_id, username, nsid):
         """This function will scrape the user timeline"""
