@@ -5,6 +5,7 @@ import re
 import json
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
+from  sfmutils.warcprox import warced
 
 log = logging.getLogger(__name__)
 
