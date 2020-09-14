@@ -3,8 +3,8 @@
   "message":{
     "id": "test:1",
     "type": "Facebook Timeline Harvest",
-    "path": "C:/Users/Frederik Gremler/Documents/EO2/harvester/sfm-facebook-harvester",
-    "working_path": "C:/Users/Frederik Gremler/Documents/EO2/harvester/sfm-facebook-harvester",
+    "path": "testharvest",
+    "working_path": "testharvest",
     "seeds": [
         {
             "id": "32786222ef374eb38f1c5d56321c99e8",
