@@ -56,7 +56,6 @@ class FacebookHarvester(BaseHarvester):
         log.debug("Harvesting user %s with seed_id %s.", username, seed_id)
         # make sure either username or nsid is present to start scraping
         assert username or nsid
-        print("Got here")
 
         # Possibly look up username
         if username and not nsid:
@@ -75,6 +74,9 @@ class FacebookHarvester(BaseHarvester):
 
         # now start scraping with facebook scraper
         facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
+
+        result = list(facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20))
+        print(result[0])
 
 
 
