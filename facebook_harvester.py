@@ -3,6 +3,8 @@ import facebook_scraper
 import logging
 import re
 import json
+from bs4 import BeautifulSoup
+import requests
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
 from  sfmutils.warcprox import warced
@@ -22,6 +24,30 @@ class FacebookHarvester(BaseHarvester):
 
         self.connection_errors = connection_errors
         self.http_errors = http_errors
+
+    def get_fbid(self, username):
+        """
+        Attempts to scrape fb id from fb pages. Username should be full
+        FB Link.
+        """
+        r = requests.get(username)
+
+        soup = BeautifulSoup(r.content, "html.parser")
+
+        # getting id, still a little crude
+        id = soup.find('meta', {"property" : "al:android:url"})
+
+        id = id.get('content')
+
+        if id.endswith('?referrer=app_link'):
+            id = id[:-18]
+
+        if id.startswith('fb://page/'):
+            id = id[10:]
+
+        return(id)
+
+
 
     def harvest_seeds(self):
         """
@@ -43,6 +69,8 @@ class FacebookHarvester(BaseHarvester):
 
             raise KeyError
 
+
+
     def facebook_users_timeline(self):
         """Several users"""
 
@@ -62,11 +90,14 @@ class FacebookHarvester(BaseHarvester):
         if username and not nsid:
             #todo lookup username
             log.debug("No FB userid, retrieving it")
-            pass
+
+            nsid = self.get_fbid(username)
+
+
             if nsid:
                 # report back whether user id was found
+                # todo - need to add timeout and what to do if blocked
                 facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
- # todo
 
             else:
                 msg = "NSID not found for user {}".format(username)
@@ -77,7 +108,12 @@ class FacebookHarvester(BaseHarvester):
         facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
 
         result = list(facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20))
+
+        # todo: deal with blocking (i.e.: wait 24 hours until resuming harvest)
+
         print(result[0])
+
+
 
 
 

@@ -1,0 +1,27 @@
+
+{  "routing_key" : "harvest.start.facebook.facebook_user_timeline",
+  "message":{
+    "id": "test:1",
+    "type": "Facebook Timeline Harvest",
+    "path": "testharvest",
+    "working_path": "testharvest",
+    "seeds": [
+        {
+            "id": "32786222ef374eb38f1c5d56321c99e8",
+            "token": "Frelimo-442978589179108"
+        }
+    ],
+    "credentials": {
+        "consumer_key": "EHde7ksBGgflbP5nUalEfhaeo",
+        "consumer_secret": "ZtUpemtBkf2maqFiy52D5dihFPAiLebuMOmqN0jeQtXeAlen",
+        "access_token": "481186914-c2yZjgbk13np0Z5MWEFQKSQNFBXd8T9r4k90YkJl",
+        "access_token_secret": "jK9QOmn5Vbbmfg2ANT6KgfmKRqV8ThXVQ1G6qQg8BCejvp"
+    },
+    "collection_set": {
+        "id": "test_set"
+    },
+    "collection": {
+        "id": "test_set"
+    }
+}
+}
