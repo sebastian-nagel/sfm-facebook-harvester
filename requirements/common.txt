@@ -11,7 +11,6 @@ requests==2.22.0
 # Testing
 mock==2.0.0
 
-
 # General
 pytz==2019.3
 # Testing
