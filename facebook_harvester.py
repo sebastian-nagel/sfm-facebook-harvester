@@ -28,8 +28,16 @@ class FacebookHarvester(BaseHarvester):
     def get_fbid(self, username):
         """
         Attempts to scrape fb id from fb pages. Username should be full
-        FB Link.
+        FB Link, if not this will construct it from the username.
         """
+
+
+        base_fb_url = "https://www.facebook.com/"
+
+        if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
+            username = base_fb_url + str(username)
+
+
         r = requests.get(username)
 
         soup = BeautifulSoup(r.content, "html.parser")
