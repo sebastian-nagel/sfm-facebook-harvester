@@ -6,7 +6,7 @@ from dateutil.parser import parse as date_parse
 import json
 import sys
 
-SEARCH_URL = "https://facebook.com/"
+SEARCH_URL = "https://m.facebook.com/"
 
 class FacebookWarcIter(BaseWarcIter):
     def __init__(self, filepaths, limit_user_ids=None):
@@ -19,6 +19,7 @@ class FacebookWarcIter(BaseWarcIter):
     def _item_iter(self, url, json_obj):
         # Ignore error messages
         if isinstance(json_obj, dict) and ('error' in json_obj or 'errors' in json_obj):
+            log.info("Error in json payload of %s", json_obj)
             return
         # Search has { "statuses": [tweets] }
         # Timeline has [tweets]

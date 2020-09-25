@@ -4,7 +4,12 @@ import logging
 import re
 import json
 from bs4 import BeautifulSoup
+from warcio.warcwriter import WARCWriter
 import requests
+import os
+import datetime
+from io import BytesIO
+
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
 from  sfmutils.warcprox import warced
@@ -24,6 +29,11 @@ class FacebookHarvester(BaseHarvester):
 
         self.connection_errors = connection_errors
         self.http_errors = http_errors
+        # pages attribute for facebookscarper - how far 'back' should the scraper look?
+        self.pages = 1000
+
+#
+# python facebook_harvester.py seed test.json . --tries 1
 
     def get_fbid(self, username):
         """
@@ -42,7 +52,7 @@ class FacebookHarvester(BaseHarvester):
 
         soup = BeautifulSoup(r.content, "html.parser")
 
-        # getting id, still a little crude
+        # getting id, still a little crude, todo
         id = soup.find('meta', {"property" : "al:android:url"})
 
         id = id.get('content')
@@ -102,24 +112,47 @@ class FacebookHarvester(BaseHarvester):
             nsid = self.get_fbid(username)
 
 
-            if nsid:
-                # report back whether user id was found
-                # todo - need to add timeout and what to do if blocked
-                facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
+        if nsid:
+            # report back whether user id was found
+            log.info("FB userid %s", nsid)
+            # todo - need to add timeout and what to do if blocked
 
-            else:
-                msg = "NSID not found for user {}".format(username)
-                log.exception(msg)
-                self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
+            scrape_result = []
 
-        # now start scraping with facebook scraper
-        facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20)
+            for post in facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20):
+                scrape_result.append(post)
 
-        result = list(facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20))
 
+            def json_date_converter(o):
+                if isinstance(o, datetime.datetime):
+                    return o.__str__()
+
+
+            # todo, write this in same directionary as 'streamed' warc files
+            if not os.path.exists('data'):
+                os.makedirs('data')
+
+
+            #with open(os.path.join(self.warc_temp_dir, str(nsid) + "warc.gz"), "wb") as result_warc_file:
+            with open(os.path.join("data", str(nsid)) + "warc.gz", "wb") as result_warc_file:
+                log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
+                writer = WARCWriter(result_warc_file, gzip = True)
+
+                json_payload = json.dumps(scrape_result, default = json_date_converter).encode("utf-8")
+
+
+                record = writer.create_warc_record(username, 'metadata',
+                                                    payload = BytesIO(json_payload),
+                                                    warc_content_type = "application/json")
+                writer.write_record(record)
+                log.info("Writing scraped results to %s", self.warc_temp_dir)
+
+
+        else:
+            msg = "NSID not found for user {}".format(username)
+            log.exception(msg)
+            self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
         # todo: deal with blocking (i.e.: wait 24 hours until resuming harvest)
-
-        print(result[0])
 
 
 
