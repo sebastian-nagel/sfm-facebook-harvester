@@ -9,10 +9,12 @@ import requests
 import os
 import datetime
 from io import BytesIO
-
+import warcprox
+import random
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
-from  sfmutils.warcprox import warced
+from sfmutils.warcprox import warced
+from sfmutils.utils import safe_string
 
 log = logging.getLogger(__name__)
 
@@ -124,17 +126,20 @@ class FacebookHarvester(BaseHarvester):
 
 
             def json_date_converter(o):
+                """ Converts datetime.datetime items in facebook_scraper result
+                to formate suitable for json.dumps"""
                 if isinstance(o, datetime.datetime):
                     return o.__str__()
 
 
-            # todo, write this in same directionary as 'streamed' warc files
-            if not os.path.exists('data'):
-                os.makedirs('data')
+            # filename will later be converted to path
+            # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
+            # create random token for filename
+            random_token = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz0123456789', 8))
+            serial_no = '00000'
+            file_name = safe_string(self.message["id"]) + "-" + warcprox.timestamp17() + "-" + serial_no + "-" + random_token
 
-
-            #with open(os.path.join(self.warc_temp_dir, str(nsid) + "warc.gz"), "wb") as result_warc_file:
-            with open(os.path.join("data", str(nsid)) + "warc.gz", "wb") as result_warc_file:
+            with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
                 log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
                 writer = WARCWriter(result_warc_file, gzip = True)
 
@@ -146,8 +151,6 @@ class FacebookHarvester(BaseHarvester):
                                                     warc_content_type = "application/json")
                 writer.write_record(record)
                 log.info("Writing scraped results to %s", self.warc_temp_dir)
-
-
         else:
             msg = "NSID not found for user {}".format(username)
             log.exception(msg)

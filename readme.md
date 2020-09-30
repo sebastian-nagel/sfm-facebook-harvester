@@ -4,3 +4,4 @@
 
 * implement sleep between requests
 * what to do in case of blocking
+* gzip options in filenames
