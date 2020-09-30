@@ -23,7 +23,7 @@ class FacebookWarcIter(BaseWarcIter):
             return
         # Search has { "statuses": [tweets] }
         # Timeline has [tweets]
-        post_list = json_obj
+        post_list = json_obj.
         for status in post_list:
             yield "text", "post_id", date_parse("time"), "likes"
 
