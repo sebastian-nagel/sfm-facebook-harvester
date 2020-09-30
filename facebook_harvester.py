@@ -124,13 +124,11 @@ class FacebookHarvester(BaseHarvester):
             for post in facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20):
                 scrape_result.append(post)
 
-
             def json_date_converter(o):
                 """ Converts datetime.datetime items in facebook_scraper result
                 to formate suitable for json.dumps"""
                 if isinstance(o, datetime.datetime):
                     return o.__str__()
-
 
             # filename will later be converted to path
             # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
@@ -146,7 +144,7 @@ class FacebookHarvester(BaseHarvester):
                 json_payload = json.dumps(scrape_result, default = json_date_converter).encode("utf-8")
 
 
-                record = writer.create_warc_record(username, 'metadata',
+                record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
                                                     payload = BytesIO(json_payload),
                                                     warc_content_type = "application/json")
                 writer.write_record(record)
