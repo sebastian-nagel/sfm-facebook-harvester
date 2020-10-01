@@ -124,6 +124,14 @@ class FacebookHarvester(BaseHarvester):
             for post in facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20):
                 scrape_result.append(post)
 
+                incremental = self.message.get("options", {}).get("incremental", False)
+
+                if incremental:
+
+                    self.state_store.set_state(__name__, u"{}.since_id".format(self._search_id()))
+
+
+
             def json_date_converter(o):
                 """ Converts datetime.datetime items in facebook_scraper result
                 to formate suitable for json.dumps"""
@@ -155,8 +163,17 @@ class FacebookHarvester(BaseHarvester):
             self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
         # todo: deal with blocking (i.e.: wait 24 hours until resuming harvest)
 
+    def _search_id(self):
 
+        query = todo
 
+        return query
+
+    def process_search_warc(self, warc_filepath):
+
+        incremental = self.message.get("options", {}).get("incremental", False)
+
+        since_id = self.state_store.get_state(__name__, u"{}.since_id".format(self._search_id())) if incremental else None
 
 
 if __name__ == "__main__":
