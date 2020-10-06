@@ -32,8 +32,7 @@ class FacebookHarvester(BaseHarvester):
         self.connection_errors = connection_errors
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
-        self.pages = 1000
-
+        self.pages = 20 # this is the number of pages that facebook_scraper will scrape - could later be adapted
 #
 # python facebook_harvester.py seed test.json . --tries 1
 
@@ -118,25 +117,27 @@ class FacebookHarvester(BaseHarvester):
             # report back whether user id was found
             log.info("FB userid %s", nsid)
             # todo - need to add timeout and what to do if blocked
+            # todo - post ids will sometimes be empty, account for that for incremental
+
+            incremental = self.message.get("options", {}).get("incremental", False)
+
+            if incremental:
+                # search for since_id of post
+                since_id = self.state_store.get_state(__name__, u"timeline.{}.since_id".format(nsid))
+
 
             scrape_result = []
 
-            for post in facebook_scraper.get_posts(nsid, pages = 1, extra_info = True, timeout = 20):
+            for post in facebook_scraper.get_posts(nsid, pages = pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
 
-                incremental = self.message.get("options", {}).get("incremental", False)
+                if incremental and post["post_id"] == since_id:
 
-                if incremental:
+                    log.info("Stopping, found last post that was previously harvested with id: {}".format(post["post_id"]))
 
-                    self.state_store.set_state(__name__, u"{}.since_id".format(self._search_id()))
+                    break
 
 
-
-            def json_date_converter(o):
-                """ Converts datetime.datetime items in facebook_scraper result
-                to formate suitable for json.dumps"""
-                if isinstance(o, datetime.datetime):
-                    return o.__str__()
 
             # filename will later be converted to path
             # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
@@ -149,6 +150,12 @@ class FacebookHarvester(BaseHarvester):
                 log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
                 writer = WARCWriter(result_warc_file, gzip = True)
 
+                def json_date_converter(o):
+                    """ Converts datetime.datetime items in facebook_scraper result
+                    to formate suitable for json.dumps"""
+                    if isinstance(o, datetime.datetime):
+                        return o.__str__()
+
                 json_payload = json.dumps(scrape_result, default = json_date_converter).encode("utf-8")
 
 
@@ -157,6 +164,22 @@ class FacebookHarvester(BaseHarvester):
                                                     warc_content_type = "application/json")
                 writer.write_record(record)
                 log.info("Writing scraped results to %s", self.warc_temp_dir)
+
+            # write to state store
+            incremental = self.message.get("options", {}).get("incremental", False)
+
+            key = "timeline.{}.since_id".format(nsid)
+            max_post_time = scrape_result[0].get("time")
+            max_post_id = scrape_result[0].get("post_id")
+
+            assert max_post_time and max_post_id
+
+
+            # set_state(self, resource_type, key, value)
+            self.state_store.set_state(__name__, key, max_post_id) if incremental else None
+            log.info("Wrote first scraped post to state_store")
+
+
         else:
             msg = "NSID not found for user {}".format(username)
             log.exception(msg)
@@ -165,15 +188,10 @@ class FacebookHarvester(BaseHarvester):
 
     def _search_id(self):
 
-        query = todo
+        since_id = self.state_store.get_state(__name__, "timeline.{}.since_id".format(
+        user_id) if incremental else None)
 
-        return query
-
-    def process_search_warc(self, warc_filepath):
-
-        incremental = self.message.get("options", {}).get("incremental", False)
-
-        since_id = self.state_store.get_state(__name__, u"{}.since_id".format(self._search_id())) if incremental else None
+        return since_id
 
 
 if __name__ == "__main__":
