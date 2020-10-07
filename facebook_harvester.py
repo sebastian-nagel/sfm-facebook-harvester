@@ -11,6 +11,7 @@ import datetime
 from io import BytesIO
 import warcprox
 import random
+import time
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
 from sfmutils.warcprox import warced
@@ -20,6 +21,9 @@ log = logging.getLogger(__name__)
 
 QUEUE = "facebook_rest_harvester"
 TIMELINE_ROUTING_KEY = "harvest.start.facebook.facebook_user_timeline"
+BIO_ROUTING_KEY = "harvest.start.facebook.facebook_user_bio"
+
+base_fb_url = "https://www.facebook.com/"
 
 class FacebookHarvester(BaseHarvester):
 
@@ -32,7 +36,7 @@ class FacebookHarvester(BaseHarvester):
         self.connection_errors = connection_errors
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
-        self.pages = 20 # this is the number of pages that facebook_scraper will scrape - could later be adapted
+        self.pages = 1000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
 #
 # python facebook_harvester.py seed test.json . --tries 1
 
@@ -43,7 +47,6 @@ class FacebookHarvester(BaseHarvester):
         """
 
 
-        base_fb_url = "https://www.facebook.com/"
 
         if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
             username = base_fb_url + str(username)
@@ -75,17 +78,19 @@ class FacebookHarvester(BaseHarvester):
         bein harvested but this could change
         """
 
+        harvest_type = self.message.get("type")
         # Dispatch message based on type
-        harvest_type = "Facebook Timeline Harvest"
+
         log.debug("Harvest type is %s", harvest_type)
 
 
         if harvest_type == "Facebook Timeline Harvest":
             log.debug("Starting timeline harvest")
             self.facebook_users_timeline()
-
+        elif harvest_type == "facebook_user_bio":
+            self.facebook_users_bio()
+            log.debug("Starting Facebook bio harvest")
         else:
-
             raise KeyError
 
 
@@ -192,6 +197,105 @@ class FacebookHarvester(BaseHarvester):
         user_id) if incremental else None)
 
         return since_id
+
+    def facebook_users_bio(self):
+
+
+        for seed in self.message.get("seeds", []):
+
+            username = seed.get("token")
+
+            # check whether it already has been scraped, in that case do not scrape bio
+            prev_harvest = self.state_store.get_state(__name__, "bio.{}".format(username))
+
+            if prev_harvest is None:
+                # harvest
+                self.facebook_user_bio(username = username)
+
+                # write to state store
+                key = "bio.{}".format(username)
+                self.state_store.set_state(__name__, key, True)
+                # for a large number of sites we avoid to many requests
+                # also adding random  float number between 0 and 1 todo via random.random
+                time.sleep((5))
+            elif prev_harvest:
+                log.info("Bio of this account has already been harvested - stopping")
+
+
+    def facebook_user_bio(self, username):
+        """Scrapes Facebook bio and returns info
+        on the information contained on the about page (e.g. https://www.facebook.com/pg/SPD/about/?ref=page_internal)
+        @param username: Facebook username
+        @return: a dictionary of account attributes """
+
+
+        # created at field
+        fb_general = base_fb_url + username
+
+        fb_about = base_fb_url +  username + "/about/?ref=page_internal"
+
+        # request the html
+        r = requests.get(fb_general)
+        # ensure no 404's
+        if r:
+            soup = BeautifulSoup(r.content, "html.parser")
+
+            created_at = soup.find('div', {"class" : "_3qn7"})
+            created_at = created_at.select_one("span").text
+
+            created_at = re.sub(r"(Seite erstellt)", "", created_at)
+
+            created_at = created_at[3:]
+
+            bio_dict = {"created_at": created_at}
+
+        # request about html
+        r_about = requests.get(fb_about)
+
+        # ensure no 404's
+        if r_about:
+
+            about_soup = BeautifulSoup(r_about.content, "html.parser")
+            mission_text = about_soup.find_all('div', {'class' : "_4bl9"})
+
+
+            for divs in mission_text:
+                describing_div = divs.find('div', {'class': '_50f4'})
+                content_div = divs.find('div', {'class': '_3-8w'})
+
+                if describing_div and content_div:
+                    bio_dict[describing_div.text] = content_div.text
+
+
+        # ensure that only warc will be written if sites were found
+        # else nothing will happen
+        if r_about or r:
+            # filename will later be converted to path
+            # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
+            # create random token for filename
+            random_token = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz0123456789', 8))
+            serial_no = '00000'
+            file_name = safe_string(self.message["id"]) + "-" + warcprox.timestamp17() + "-" + serial_no + "-" + random_token
+
+            with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
+                log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
+                writer = WARCWriter(result_warc_file, gzip = True)
+
+                def json_date_converter(o):
+                    """ Converts datetime.datetime items in facebook_scraper result
+                    to formate suitable for json.dumps"""
+                    if isinstance(o, datetime.datetime):
+                        return o.__str__()
+
+                json_payload = json.dumps(bio_dict, default = json_date_converter).encode("utf-8")
+
+
+                record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
+                                                    payload = BytesIO(json_payload),
+                                                    warc_content_type = "application/json")
+                writer.write_record(record)
+                log.info("Writing scraped results to %s", self.warc_temp_dir)
+
 
 
 if __name__ == "__main__":
