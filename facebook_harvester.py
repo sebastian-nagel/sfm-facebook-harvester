@@ -133,12 +133,12 @@ class FacebookHarvester(BaseHarvester):
 
             scrape_result = []
 
-            for post in facebook_scraper.get_posts(nsid, pages = pages, extra_info = True, timeout = 20):
+            for post in facebook_scraper.get_posts(nsid, pages = self.pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
 
                 if incremental and post["post_id"] == since_id:
 
-                    log.info("Stopping, found last post that was previously harvested with id: {}".format(post["post_id"]))
+                    log.info("Stopping, found last post that was previously harvested with id: %s", post["post_id"])
 
                     break
 
@@ -179,10 +179,11 @@ class FacebookHarvester(BaseHarvester):
 
             assert max_post_time and max_post_id
 
+            if incremental:
 
-            # set_state(self, resource_type, key, value)
-            self.state_store.set_state(__name__, key, max_post_id) if incremental else None
-            log.info("Wrote first scraped post to state_store")
+                self.state_store.set_state(__name__, key, max_post_id) if incremental else None
+
+                log.info("Wrote first scraped post to state_store")
 
 
         else:
