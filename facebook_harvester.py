@@ -17,11 +17,16 @@ from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UI
 from sfmutils.warcprox import warced
 from sfmutils.utils import safe_string
 
+
+
 log = logging.getLogger(__name__)
+
+
 
 QUEUE = "facebook_rest_harvester"
 TIMELINE_ROUTING_KEY = "harvest.start.facebook.facebook_user_timeline"
 BIO_ROUTING_KEY = "harvest.start.facebook.facebook_user_bio"
+ADS_ROUTING_KEY = "harvest.start.facebook.facebook_user_ads"
 
 base_fb_url = "https://www.facebook.com/"
 
@@ -75,7 +80,7 @@ class FacebookHarvester(BaseHarvester):
         """
         Will start appropriate harvest - as of now this
         is unnecessary as timelines are the only fb types
-        bein harvested but this could change
+        being harvested but this could change
         """
 
         harvest_type = self.message.get("type")
@@ -84,12 +89,15 @@ class FacebookHarvester(BaseHarvester):
         log.debug("Harvest type is %s", harvest_type)
 
 
-        if harvest_type == "Facebook Timeline Harvest":
-            log.debug("Starting timeline harvest")
+        if harvest_type == "facebook_timeline_harvest":
+            log.debug("Starting Facebook timeline harvest")
             self.facebook_users_timeline()
         elif harvest_type == "facebook_user_bio":
             self.facebook_users_bio()
             log.debug("Starting Facebook bio harvest")
+        elif harvest_type == "facebook_user_ads":
+            log.debug("Starting Facebook ads harvest")
+            self.facebook_users_ads()
         else:
             raise KeyError
 
@@ -112,7 +120,7 @@ class FacebookHarvester(BaseHarvester):
 
         # Possibly look up username
         if username and not nsid:
-            #todo lookup username
+
             log.debug("No FB userid, retrieving it")
 
             nsid = self.get_fbid(username)
@@ -161,7 +169,8 @@ class FacebookHarvester(BaseHarvester):
                     if isinstance(o, datetime.datetime):
                         return o.__str__()
 
-                json_payload = json.dumps(scrape_result, default = json_date_converter).encode("utf-8")
+                json_payload = json.dumps(scrape_result, default = json_date_converter,
+                                          ensure_ascii = False).encode("utf-8")
 
 
                 record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
@@ -288,7 +297,8 @@ class FacebookHarvester(BaseHarvester):
                     if isinstance(o, datetime.datetime):
                         return o.__str__()
 
-                json_payload = json.dumps(bio_dict, default = json_date_converter).encode("utf-8")
+                json_payload = json.dumps(bio_dict, default = json_date_converter,
+                                          ensure_ascii = False).encode("utf-8")
 
 
                 record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
@@ -296,6 +306,83 @@ class FacebookHarvester(BaseHarvester):
                                                     warc_content_type = "application/json")
                 writer.write_record(record)
                 log.info("Writing scraped results to %s", self.warc_temp_dir)
+
+    def facebook_user_ads(self, username, nsid, iso2c, access_token):
+        assert username or nsid
+
+        limit_per_page = 500
+
+        if username and not nsid:
+            log.debug("No FB userid, retrieving it")
+
+            nsid = self.get_fbid(username)
+
+
+
+        if nsid and access_token and iso2c:
+            # start scraping
+            request_url = "https://graph.facebook.com/v5.0/ads_archive"
+            request_params =  {"access_token": access_token,
+            "limit": limit_per_page,
+            "search_page_ids": str(nsid),
+            "ad_active_status": "ALL",
+            "ad_reached_countries": iso2c, # todo
+            "fields": "page_name, page_id, funding_entity, ad_creation_time, ad_delivery_start_time, ad_delivery_stop_time, ad_creative_body, ad_creative_link_caption, ad_creative_link_description, ad_creative_link_title, ad_snapshot_url, demographic_distribution, region_distribution, impressions, spend, currency"
+                    }
+
+            api_result = requests.get(request_url, params = request_params)
+
+            print(api_result.text)
+
+            random_token = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz0123456789', 8))
+            serial_no = '00000'
+            file_name = safe_string(self.message["id"]) + "-" + warcprox.timestamp17() + "-" + serial_no + "-" + random_token
+
+            # write to warc
+            with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
+                log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
+                writer = WARCWriter(result_warc_file, gzip = True)
+
+                def json_date_converter(o):
+                    """ Converts datetime.datetime items in facebook_scraper result
+                    to formate suitable for json.dumps"""
+                    if isinstance(o, datetime.datetime):
+                        return o.__str__()
+
+                json_payload = json.dumps(api_result.json(), default = json_date_converter,
+                                          ensure_ascii = False).encode("utf-8")
+
+
+                record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
+                                                    payload = BytesIO(json_payload),
+                                                    warc_content_type = "application/json")
+                writer.write_record(record)
+                log.info("Writing scraped results to %s", self.warc_temp_dir)
+            time.sleep(1.2) # sleep to avoid getting blocked by api
+
+        else:
+            log.debug("Something went wrong. Is some information missing? Acess token is: %s, iso2c is: %s",
+                        str(access_token), str(iso2c))
+
+
+
+    def facebook_users_ads(self):
+        """Get multiple profile ads from api ads library """
+
+        access_token = self.message["credentials"]["access_token"] if self.message.get("credentials", False) else None
+
+
+        # ads library api needs the iso2c code
+        # this should be directly supplied with the message and come from the
+        # harvest message
+        for seed in self.message.get("seeds", []):
+
+            username = seed.get("token")
+            nsid = seed.get("uid")
+            iso2c = seed.get("iso2c")
+
+            # pass to actual harvester that will make api calls
+            self.facebook_user_ads(username = username, nsid = nsid, iso2c = iso2c, access_token = access_token)
 
 
 
