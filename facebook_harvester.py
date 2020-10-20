@@ -60,12 +60,10 @@ class FacebookHarvester(BaseHarvester):
 
         # getting id, still a little crude, todo
         id = soup.find('meta', {"property" : "al:android:url"})
-
         id = id.get('content')
 
         if id.endswith('?referrer=app_link'):
             id = id[:-18]
-
         if id.startswith('fb://page/'):
             id = id[10:]
 
