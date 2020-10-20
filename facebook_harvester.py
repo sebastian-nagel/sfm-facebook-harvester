@@ -41,7 +41,7 @@ class FacebookHarvester(BaseHarvester):
         self.connection_errors = connection_errors
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
-        self.pages = 1000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
+        self.pages = 2 # this is the number of pages that facebook_scraper will scrape - could later be adapted
 #
 # python facebook_harvester.py seed test.json . --tries 1
 
