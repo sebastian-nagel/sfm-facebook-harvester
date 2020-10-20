@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import absolute_import
-from sfmutils.warc_iter import BaseWarcIter
+from sfmutils.warc_iter import BaseWarcIter, log, IterItem
 from dateutil.parser import parse as date_parse
 import json
 import sys
@@ -9,11 +9,6 @@ import logging
 import os
 from warcio.archiveiterator import WARCIterator
 from collections import namedtuple
-
-log = logging.getLogger(__name__)
-
-IterItem = namedtuple('IterItem', ['type', 'id', 'date', 'url', 'item'])
-
 
 SEARCH_URL = "https://m.facebook.com/"
 
@@ -93,9 +88,9 @@ class FacebookWarcIter(BaseWarcIter):
         for status in post_list:
             yield "facebook_status", status["post_id"], date_parse(status["time"]), status
 
-
-
-
+    @property
+    def line_oriented(self):
+        return True
 
     @staticmethod
     def item_types():

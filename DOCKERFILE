@@ -10,5 +10,6 @@ WORKDIR /opt/sfm-facebook-harvester
 
 ADD docker/invoke.sh /opt/sfm-setup/
 RUN chmod +x /opt/sfm-setup/invoke.sh
+RUN apt-get install jq -yq
 
 CMD ["/opt/sfm-setup/invoke.sh"]
