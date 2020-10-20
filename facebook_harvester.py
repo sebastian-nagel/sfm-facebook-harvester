@@ -51,11 +51,8 @@ class FacebookHarvester(BaseHarvester):
         FB Link, if not this will construct it from the username.
         """
 
-
-
         if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
             username = base_fb_url + str(username)
-
 
         r = requests.get(username)
 

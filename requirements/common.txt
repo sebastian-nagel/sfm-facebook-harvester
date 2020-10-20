@@ -1,10 +1,5 @@
 python-dateutil==2.7.5
 
-# facebook scraper
-facebook_scraper
-python-dateutil
-beautifulsoup4
-
 # Pinning to correct version for sfm-utils
 requests==2.22.0
 
