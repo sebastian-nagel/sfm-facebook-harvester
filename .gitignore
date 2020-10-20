@@ -3,3 +3,5 @@ test.json
 test0.json
 facebook_bio_harvester.py
 ads_temp.py
+__pycache__
+*.pyc
