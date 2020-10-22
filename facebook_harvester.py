@@ -84,7 +84,7 @@ class FacebookHarvester(BaseHarvester):
         log.debug("Harvest type is %s", harvest_type)
 
 
-        if harvest_type == "facebook_timeline_harvest":
+        if harvest_type == "facebook_user_timeline":
             log.debug("Starting Facebook timeline harvest")
             self.facebook_users_timeline()
         elif harvest_type == "facebook_user_bio":
