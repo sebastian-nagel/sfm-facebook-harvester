@@ -41,7 +41,7 @@ class FacebookHarvester(BaseHarvester):
         self.connection_errors = connection_errors
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
-        self.pages = 1000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
+        self.pages = 2 # this is the number of pages that facebook_scraper will scrape - could later be adapted
 #
 # python facebook_harvester.py seed test.json . --tries 1
 
@@ -132,7 +132,6 @@ class FacebookHarvester(BaseHarvester):
             if incremental:
                 # search for since_id of post
                 since_id = self.state_store.get_state(__name__, u"timeline.{}.since_id".format(nsid))
-
 
             scrape_result = []
 
@@ -382,4 +381,4 @@ class FacebookHarvester(BaseHarvester):
 
 
 if __name__ == "__main__":
-    FacebookHarvester.main(FacebookHarvester, QUEUE, [TIMELINE_ROUTING_KEY])
+    FacebookHarvester.main(FacebookHarvester, QUEUE, [TIMELINE_ROUTING_KEY, BIO_ROUTING_KEY, ADS_ROUTING_KEY])
