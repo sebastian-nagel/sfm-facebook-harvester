@@ -376,7 +376,7 @@ class FacebookHarvester(BaseHarvester):
             iso2c = seed.get("iso2c")
 
             # pass to actual harvester that will make api calls
-            self.facebook_user_ads(username = username, nsid = nsid, iso2c = iso2c, access_token = access_token_fb)
+            self.facebook_user_ads(username = username, nsid = nsid, iso2c = iso2c, access_token = access_token)
 
 
 
