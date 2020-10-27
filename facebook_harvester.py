@@ -355,7 +355,7 @@ class FacebookHarvester(BaseHarvester):
             time.sleep(1.2) # sleep to avoid getting blocked by api
 
         else:
-            log.debug("Something went wrong. Is some information missing? Acess token is: %s, iso2c is: %s",
+            log.debug("Something went wrong. Is some information missing? Access token is: %s, iso2c is: %s",
                         str(access_token), str(iso2c))
 
 
@@ -363,7 +363,7 @@ class FacebookHarvester(BaseHarvester):
     def facebook_users_ads(self):
         """Get multiple profile ads from api ads library """
 
-        access_token = self.message["credentials"]["access_token"] if self.message.get("credentials", False) else None
+        access_token = self.message["credentials"]["access_token_fb"] if self.message.get("credentials", False) else None
 
 
         # ads library api needs the iso2c code
@@ -376,7 +376,7 @@ class FacebookHarvester(BaseHarvester):
             iso2c = seed.get("iso2c")
 
             # pass to actual harvester that will make api calls
-            self.facebook_user_ads(username = username, nsid = nsid, iso2c = iso2c, access_token = access_token)
+            self.facebook_user_ads(username = username, nsid = nsid, iso2c = iso2c, access_token = access_token_fb)
 
 
 
