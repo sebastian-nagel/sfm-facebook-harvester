@@ -371,7 +371,10 @@ class FacebookHarvester(BaseHarvester):
         # harvest message
         for seed in self.message.get("seeds", []):
 
-            username = seed.get("token")
+            # retrieve nested account info
+            account_info = seed[0].get("token")
+
+            username = seed.get("username")
             nsid = seed.get("uid")
             iso2c = seed.get("iso2c")
 
