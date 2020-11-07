@@ -27,11 +27,12 @@ class FacebookWarcIter(BaseWarcIter):
         for filepath in self.filepaths:
             log.info("Iterating over %s", filepath)
             filename = os.path.basename(filepath)
+
             with open(filepath, 'rb') as f:
                 yield_count = 0
+
                 for record_count, record in enumerate((r for r in WARCIterator(f) if r.rec_type == 'metadata')):
                     self._debug_counts(filename, record_count, yield_count, by_record_count=True)
-
                     record_url = record.rec_headers.get_header('WARC-Target-URI')
                     record_id = record.rec_headers.get_header('WARC-Record-ID')
                     if self._select_record(record_url):
@@ -78,15 +79,23 @@ class FacebookWarcIter(BaseWarcIter):
         return True
 
     def _item_iter(self, url, json_obj):
+
         # Ignore error messages
         if isinstance(json_obj, dict) and ('error' in json_obj or 'errors' in json_obj):
             log.info("Error in json payload of %s", json_obj)
             return
-        # Search has { "statuses": [tweets] }
-        # Timeline has [tweets]
+
+
         post_list = json_obj
-        for status in post_list:
-            yield "facebook_status", status["post_id"], date_parse(status["time"]), status
+
+        if "post_id" in post_list[0]:
+
+            for status in post_list:
+                yield "facebook_status", status["post_id"], status["time"], status
+
+        elif "created_at" in post_list:
+
+                yield "facebook_bio",  "not given for fb bio", "not given for fb bio", post_list
 
     @property
     def line_oriented(self):
@@ -100,6 +109,7 @@ class FacebookWarcIter(BaseWarcIter):
 #        if not self.limit_user_ids or item.get("user", {}).get("id_str") in self.limit_user_ids:
 #            return True
 #        return False
+
 
 
 if __name__ == "__main__":
