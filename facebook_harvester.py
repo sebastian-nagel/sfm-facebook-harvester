@@ -41,7 +41,7 @@ class FacebookHarvester(BaseHarvester):
         self.connection_errors = connection_errors
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
-        self.pages = 2 # this is the number of pages that facebook_scraper will scrape - could later be adapted
+        self.pages = 1000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
 #
 # python facebook_harvester.py seed test.json . --tries 1
 
@@ -167,7 +167,7 @@ class FacebookHarvester(BaseHarvester):
                                           ensure_ascii = False).encode("utf-8")
 
 
-                record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
+                record = writer.create_warc_record(username, 'metadata',
                                                     payload = BytesIO(json_payload),
                                                     warc_content_type = "application/json")
                 writer.write_record(record)
