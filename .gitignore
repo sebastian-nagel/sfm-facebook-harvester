@@ -6,3 +6,10 @@ ads_temp.py
 __pycache__
 *.pyc
 test.py
+sfmutils
+*.warc.gz
+analysis_tools.py
+*.csv
+*.txt
+facebook_jsons_test.py
+facebook_exporter.py
