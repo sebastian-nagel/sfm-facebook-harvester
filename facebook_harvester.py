@@ -138,7 +138,7 @@ class FacebookHarvester(BaseHarvester):
             for post in facebook_scraper.get_posts(nsid, pages = self.pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
 
-                if harvest_media:
+                if harvest_media and post['images']: #last condition avoids parsing empty lists (i.e. no media)
                     log.info("Harvesting media from post")
                     # get media content from links - should automatically be caught within warc stream
                     [self._harvest_media_url(media_url) for media_url in requests.get(post['images'])]
