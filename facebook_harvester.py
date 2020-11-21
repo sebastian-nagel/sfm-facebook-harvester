@@ -42,8 +42,8 @@ class FacebookHarvester(BaseHarvester):
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
         self.pages = 1000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
-#
-# python facebook_harvester.py seed test.json . --tries 1
+        self.harvest_media_types = { 'photo': True }
+
 
     def get_fbid(self, username):
         """
@@ -120,7 +120,6 @@ class FacebookHarvester(BaseHarvester):
 
             nsid = self.get_fbid(username)
 
-
         if nsid:
             # report back whether user id was found
             log.info("FB userid %s", nsid)
@@ -128,6 +127,7 @@ class FacebookHarvester(BaseHarvester):
             # todo - post ids will sometimes be empty, account for that for incremental
 
             incremental = self.message.get("options", {}).get("incremental", False)
+            harvest_media = self.message.get("options", {}).get("harvest_media", False)
 
             if incremental:
                 # search for since_id of post
@@ -138,13 +138,16 @@ class FacebookHarvester(BaseHarvester):
             for post in facebook_scraper.get_posts(nsid, pages = self.pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
 
+                if harvest_media:
+                    log.info("Harvesting media from post")
+                    # get media content from links - should automatically be caught within warc stream
+                    [self._harvest_media_url(media_url) for media_url in requests.get(post['images'])]
+
                 if incremental and post["post_id"] == since_id:
 
                     log.info("Stopping, found last post that was previously harvested with id: %s", post["post_id"])
 
                     break
-
-
 
             # filename will later be converted to path
             # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
@@ -202,8 +205,27 @@ class FacebookHarvester(BaseHarvester):
 
         return since_id
 
-    def facebook_users_bio(self):
 
+    def _harvest_media_url(self, url):
+
+        media_urls = self.state_store.get_state(__name__, 'media.urls')
+        if media_urls is None:
+            media_urls = dict()
+        if url in media_urls:
+            log.info("Media URL %s already harvested at %s", url, media_urls[url])
+            return
+
+        try:
+            r = request.get(url)
+            log.info("Harvested media URL %s (status: %i, content-type: %s)",
+                     url, r.status_code, r.headers['content-type'])
+            media_urls[url] = str(datetime.datetime.fromtimestamp(time.time()))
+            self.state_store.set_state(__name__, 'media.urls', media_urls)
+
+        except Exception:
+            log.exception("Failed to harvest media URL %s with exception:", url)
+
+    def facebook_users_bio(self):
 
         for seed in self.message.get("seeds", []):
 
