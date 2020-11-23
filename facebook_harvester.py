@@ -141,7 +141,9 @@ class FacebookHarvester(BaseHarvester):
                 if harvest_media and post['images']: #last condition avoids parsing empty lists (i.e. no media)
                     log.info("Harvesting media from post")
                     # get media content from links - should automatically be caught within warc stream
-                    [self._harvest_media_url(media_url) for media_url in requests.get(post['images'])]
+                    # all photos on fb are jpgs, so the list comprehension checks whether this is the case
+                    # for the stream, if not (e.g. video) it will not harvest
+                    [self._harvest_media_url(media_url) for media_url in post['images'] if 'jpg' in media_url]
 
                 if incremental and post["post_id"] == since_id:
 
@@ -216,7 +218,7 @@ class FacebookHarvester(BaseHarvester):
             return
 
         try:
-            r = request.get(url)
+            r = requests.get(url)
             log.info("Harvested media URL %s (status: %i, content-type: %s)",
                      url, r.status_code, r.headers['content-type'])
             media_urls[url] = str(datetime.datetime.fromtimestamp(time.time()))
