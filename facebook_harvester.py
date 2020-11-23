@@ -224,6 +224,8 @@ class FacebookHarvester(BaseHarvester):
             media_urls[url] = str(datetime.datetime.fromtimestamp(time.time()))
             self.state_store.set_state(__name__, 'media.urls', media_urls)
 
+            time.sleep(2.5) # must sleep to ensure politeness and avoid blocking
+
         except Exception:
             log.exception("Failed to harvest media URL %s with exception:", url)
 
