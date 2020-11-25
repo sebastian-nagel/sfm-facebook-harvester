@@ -199,14 +199,6 @@ class FacebookHarvester(BaseHarvester):
             self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
         # todo: deal with blocking (i.e.: wait 24 hours until resuming harvest)
 
-    def _search_id(self):
-
-        since_id = self.state_store.get_state(__name__, "timeline.{}.since_id".format(
-        user_id) if incremental else None)
-
-        return since_id
-
-
     def _harvest_media_url(self, url):
 
         media_urls = self.state_store.get_state(__name__, 'media.urls')
