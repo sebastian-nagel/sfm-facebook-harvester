@@ -137,6 +137,7 @@ class FacebookHarvester(BaseHarvester):
 
             for post in facebook_scraper.get_posts(nsid, pages = self.pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
+                self.result.harvest_counter["posts"] += 1
 
                 if harvest_media and post['images']: #last condition avoids parsing empty lists (i.e. no media)
                     log.info("Harvesting media from post")
@@ -146,9 +147,7 @@ class FacebookHarvester(BaseHarvester):
                     [self._harvest_media_url(media_url) for media_url in post['images'] if 'jpg' in media_url]
 
                 if incremental and post["post_id"] == since_id:
-
                     log.info("Stopping, found last post that was previously harvested with id: %s", post["post_id"])
-
                     break
 
             # filename will later be converted to path
