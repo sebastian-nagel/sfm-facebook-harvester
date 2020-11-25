@@ -159,7 +159,7 @@ class FacebookHarvester(BaseHarvester):
             file_name = safe_string(self.message["id"]) + "-" + warcprox.timestamp17() + "-" + serial_no + "-" + random_token
 
             with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
-                log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
+                log.info("Writing json-timeline result to path %s", self.warc_temp_dir)
                 writer = WARCWriter(result_warc_file, gzip = True)
 
                 def json_date_converter(o):
@@ -300,7 +300,7 @@ class FacebookHarvester(BaseHarvester):
             file_name = safe_string(self.message["id"]) + "-" + warcprox.timestamp17() + "-" + serial_no + "-" + random_token
 
             with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
-                log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
+                log.info("Writing json-timeline result to path %s", self.warc_temp_dir)
                 writer = WARCWriter(result_warc_file, gzip = True)
 
                 def json_date_converter(o):
@@ -352,7 +352,7 @@ class FacebookHarvester(BaseHarvester):
 
             # write to warc
             with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
-                log.info("Writing json-timeline result to path", str(self.warc_temp_dir))
+                log.info("Writing json-timeline result to path %s", self.warc_temp_dir)
                 writer = WARCWriter(result_warc_file, gzip = True)
 
                 def json_date_converter(o):
