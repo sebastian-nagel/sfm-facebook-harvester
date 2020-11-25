@@ -138,6 +138,7 @@ class FacebookHarvester(BaseHarvester):
             for post in facebook_scraper.get_posts(nsid, pages = self.pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
                 self.result.harvest_counter["posts"] += 1
+                self.result.increment_stats("posts")
 
                 if harvest_media and post['images']: #last condition avoids parsing empty lists (i.e. no media)
                     log.info("Harvesting media from post")
