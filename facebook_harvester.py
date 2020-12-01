@@ -55,7 +55,11 @@ class FacebookHarvester(BaseHarvester):
         if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
 
             # catch weird fb urls (e.g. https://es-es.facebook.com/ehbildu/)
-            username = re.sub(r'^.+facebook\.[a-z]+/', '', username)
+            # as of 2020/12 deactivated to ensure continuity between provided seeds
+            # and harvested seeds
+            # username = re.sub(r'^.+facebook\.[a-z]+/', '', username)
+
+            # possibly add www.facebook.com
             username = base_fb_url + str(username)
 
         r = requests.get(username)
