@@ -254,7 +254,6 @@ class FacebookHarvester(BaseHarvester):
         @param username: Facebook username
         @return: a dictionary of account attributes """
 
-
         # created at field
         fb_general = base_fb_url + username
 
@@ -266,6 +265,7 @@ class FacebookHarvester(BaseHarvester):
         if r:
             soup = BeautifulSoup(r.content, "html.parser")
 
+            # scrape creation date
             created_at = soup.find('div', {"class" : "_3qn7"})
             created_at = created_at.select_one("span").text
 
@@ -273,7 +273,15 @@ class FacebookHarvester(BaseHarvester):
 
             created_at = created_at[3:]
 
-            bio_dict = {"created_at": created_at}
+            # scrape n of likes
+            # find span with like number
+            spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
+            # isolate likes via regex
+            likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
+
+            bio_dict = {"username" : fb_general,
+                        "n_likes" : likes,
+                        "created_at": created_at}
 
         # request about html
         r_about = requests.get(fb_about)
@@ -297,18 +305,18 @@ class FacebookHarvester(BaseHarvester):
         # the links to photos from script tag, these can then be passed
         # harvest_media
         # this is not affected by the harvest_media options but will always happen
-            all_scripts = about_soup.find_all('script')
+        all_scripts = about_soup.find_all('script')
 
-            for js in all_scripts:
-                for content in js.contents:
-                    if 'cover_photo' in content:
-                        # isolate relevant links
-                        links = re.findall(r'https\:\\/\\/scontent[^"]*', content)
+        for js in all_scripts:
+            for content in js.contents:
+                if 'cover_photo' in content:
+                    # isolate relevant links
+                    links = re.findall(r'https\:\\/\\/scontent[^"]*', content)
 
-            # remove escaped front slashes
-            for val, link in enumerate(links):
-                links[val] = re.sub(r'\\', "", link)
-                self._harvest_media_url(links[val])
+        # remove escaped front slashes
+        for val, link in enumerate(links):
+            links[val] = re.sub(r'\\', "", link)
+            self._harvest_media_url(links[val])
 
 
 
