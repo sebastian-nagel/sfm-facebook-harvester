@@ -51,7 +51,11 @@ class FacebookHarvester(BaseHarvester):
         FB Link, if not this will construct it from the username.
         """
 
+
         if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
+
+            # catch weird fb urls (e.g. https://es-es.facebook.com/ehbildu/)
+            username = re.sub(r'^.+facebook\.[a-z]+/', '', username)
             username = base_fb_url + str(username)
 
         r = requests.get(username)
@@ -280,13 +284,32 @@ class FacebookHarvester(BaseHarvester):
             about_soup = BeautifulSoup(r_about.content, "html.parser")
             mission_text = about_soup.find_all('div', {'class' : "_4bl9"})
 
-
             for divs in mission_text:
                 describing_div = divs.find('div', {'class': '_50f4'})
                 content_div = divs.find('div', {'class': '_3-8w'})
 
                 if describing_div and content_div:
                     bio_dict[describing_div.text] = content_div.text
+
+        # photos
+        # Retrieves profile and cover photo of public facebook page
+        # bio going to the 'about' page, parsing html and getting
+        # the links to photos from script tag, these can then be passed
+        # harvest_media
+        # this is not affected by the harvest_media options but will always happen
+            all_scripts = about_soup.find_all('script')
+
+            for js in all_scripts:
+                for content in js.contents:
+                    if 'cover_photo' in content:
+                        # isolate relevant links
+                        links = re.findall(r'https\:\\/\\/scontent[^"]*', content)
+
+            # remove escaped front slashes
+            for val, link in enumerate(links):
+                links[val] = re.sub(r'\\', "", link)
+                self._harvest_media_url(links[val])
+
 
 
         # ensure that only warc will be written if sites were found
