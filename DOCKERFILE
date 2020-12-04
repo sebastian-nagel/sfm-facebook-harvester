@@ -2,6 +2,7 @@ FROM gwul/sfm-base:master
 # @sha256:e68cb98bdc9dc23bbed734f3e507a0ffb866b007dffea038b6af8d88a62150e6
 MAINTAINER Frederik Gremler <frederik.gremler@uni-konstanz.de>
 
+USER root
 
 ADD . /opt/sfm-facebook-harvester/
 WORKDIR /opt/sfm-facebook-harvester
