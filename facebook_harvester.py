@@ -12,6 +12,8 @@ from io import BytesIO
 import warcprox
 import random
 import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
 from sfmutils.warcprox import warced
@@ -266,10 +268,15 @@ class FacebookHarvester(BaseHarvester):
         @param username: Facebook username
         @return: a dictionary of account attributes """
 
+        user_email_fb = self.message['credentials']['user_email_fb']
+        user_password_fb = self.message['credentials']['user_password_fb']
+
         # created at field
         fb_general = base_fb_url + username
-
+        # bio info
         fb_about = base_fb_url +  username + "/about/?ref=page_internal"
+        # site transparency (e.g. admins)
+        m_fb_general = "http://m.facebook.com/" + username
 
         # request the html
         r = requests.get(fb_general)
@@ -330,7 +337,42 @@ class FacebookHarvester(BaseHarvester):
             links[val] = re.sub(r'\\', "", link)
             self._harvest_media_url(links[val])
 
-
+        if m_fb_general:
+            log.info("Scraping transparency box on site")
+            driver = webdriver.Firefox()
+            driver.get("http://m.facebook.com")
+            driver.maximize_window()
+            # accept cookies
+            cookies = driver.find_element_by_id('accept-cookie-banner-label')
+            # more or less random wait to replicate user behavior, ensure politeness
+            time.sleep(random.uniform(1,7))
+            cookies.click()
+            # Search & Enter the Email or Phone field & Enter Password
+            username = driver.find_element_by_id("m_login_email")
+            password = driver.find_element_by_id("m_login_password")
+            submit  = driver.find_element_by_css_selector("._56b_")
+            # send keys and make sure not prepolutaed
+            # 2fa has to be deactivated
+            username.clear()
+            password.clear()
+            username.send_keys(user_email_fb)
+            password.send_keys(user_password_fb)
+            # Step 4) Click Login
+            submit.click()
+            time.sleep(random.uniform(1,7))
+            # navigate to site
+            driver.get(m_fb_general)
+            time.sleep(random.uniform(1,7))
+            site_transparency = driver.find_element_by_xpath("//*[@id='u_0_65']")
+            site_transparency.click()
+            time.sleep(random.uniform(1,7))
+            # simply get the whole text of the transparency box of site
+            # the exact info can be extracted ex-post
+            site_transparency_text = driver.find_element_by_xpath("/html/body/div[1]/div/div[4]/div/div[1]/div/div/div[2]").text
+            time.sleep(random.uniform(3,7))
+            driver.close()
+            log.info("Finished scraping transparency box")
+            bio_dict['transparency_text'] = site_transparency_text
 
         # ensure that only warc will be written if sites were found
         # else nothing will happen

@@ -2,6 +2,7 @@ twarc==1.7.3
 python-dateutil==2.7.5
 
 facebook_scraper
+selenium
 
 # Pinning to correct version for sfm-utils
 requests==2.22.0
