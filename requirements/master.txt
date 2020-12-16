@@ -2,6 +2,6 @@ git+https://github.com/gwu-libraries/warcprox.git@master#egg=warcprox
 git+https://github.com/gwu-libraries/sfm-utils.git@master#egg=sfmutils
 
 facebook-scraper
-
+selenium
 beautifulsoup4==4.8.2
 twarc==1.7.3

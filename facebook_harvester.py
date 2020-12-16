@@ -12,6 +12,14 @@ from io import BytesIO
 import warcprox
 import random
 import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+
 
 from sfmutils.harvester import BaseHarvester, Msg, CODE_TOKEN_NOT_FOUND, CODE_UID_NOT_FOUND, CODE_UNKNOWN_ERROR
 from sfmutils.warcprox import warced
@@ -258,10 +266,15 @@ class FacebookHarvester(BaseHarvester):
         @param username: Facebook username
         @return: a dictionary of account attributes """
 
+        user_email_fb = self.message['credentials']['user_email_fb']
+        user_password_fb = self.message['credentials']['user_password_fb']
+
         # created at field
         fb_general = base_fb_url + username
-
+        # bio info
         fb_about = base_fb_url +  username + "/about/?ref=page_internal"
+        # site transparency (e.g. admins)
+        m_fb_general = "http://m.facebook.com/" + username
 
         # request the html
         r = requests.get(fb_general)
@@ -322,6 +335,68 @@ class FacebookHarvester(BaseHarvester):
             links[val] = re.sub(r'\\', "", link)
             self._harvest_media_url(links[val])
 
+        if m_fb_general:
+
+            user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
+            site_transparency_class_selector = "._a58._a5o._9_7._2rgt._1j-g._2rgt._86-3._2rgt._1j-g._2rgt"
+            site_transparency_detail_id= "u_0_d"
+
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument('headless')
+            chrome_options.add_argument('start-maximised')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--window-size=1200x800')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument(f"user-agent={user_agent}")
+
+            # this will connect to the selenium container starting scraping
+            driver = webdriver.Remote("host.docker.internal:4444/wd/hub", {'browserName': 'chrome'})
+            driver.get("http://m.facebook.com")
+            driver.maximize_window()
+            # accept cookies
+            cookies = driver.find_element_by_id('accept-cookie-banner-label')
+            # more or less random wait to replicate user behavior, ensure politeness
+            time.sleep(random.uniform(3,9))
+            cookies.click()
+            # Search & Enter the Email or Phone field & Enter Password
+            username_fb = driver.find_element_by_id("m_login_email")
+            password_fb = driver.find_element_by_id("m_login_password")
+            submit  = driver.find_element_by_css_selector("._56b_")
+            # send keys and make sure not prepolutaed
+            # 2fa has to be deactivated
+            username_fb.clear()
+            password_fb.clear()
+            username_fb.send_keys(user_email_fb)
+            password_fb.send_keys(user_password_fb)
+            time.sleep(random.uniform(3,9))
+            # Step 4) Click Login
+            submit.click()
+            time.sleep(random.uniform(3,9))
+            # navigate to site
+            driver.get(m_fb_general)
+            time.sleep(random.uniform(3,9))
+            driver.execute_script("window.scrollTo(0, 800)")
+            # site info only loads on scroll
+            # use class name and div content (todo)
+            time.sleep(random.uniform(20, 25))
+            element = WebDriverWait(driver, 20).until(
+                    ec.presence_of_element_located((By.CSS_SELECTOR, site_transparency_class_selector))
+                )
+            site_transparency = driver.find_elements_by_css_selector(site_transparency_class_selector)
+            #site transparency should always be below about
+            site_transparency[1].click()
+            time.sleep(random.uniform(20, 15))
+            # simply get the whole text of the transparency box of site
+            # the exact info can be extracted ex-post
+            element = WebDriverWait(driver, 20).until(
+                    ec.presence_of_element_located((By.ID, site_transparency_detail_id))
+                )
+            time.sleep(random.uniform(3,9))
+            site_transparency_text = driver.find_element_by_id(site_transparency_detail_id).text
+            time.sleep(random.uniform(3,9))
+            driver.close()
+            log.info("Finished scraping transparency box")
+            bio_dict['transparency_text'] = site_transparency_text
 
 
         # ensure that only warc will be written if sites were found
