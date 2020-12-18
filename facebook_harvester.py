@@ -269,6 +269,13 @@ class FacebookHarvester(BaseHarvester):
         user_email_fb = self.message['credentials']['user_email_fb']
         user_password_fb = self.message['credentials']['user_password_fb']
 
+        # ensure username is clean and can be accessed
+        if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/"):
+
+            username = re.sub(r'^.+facebook\.com\/', '', username)
+            # possibly also remove trailing /
+            username = re.sub(r'\/$', '', username)
+
         # created at field
         fb_general = base_fb_url + username
         # bio info
@@ -279,42 +286,48 @@ class FacebookHarvester(BaseHarvester):
         # request the html
         r = requests.get(fb_general)
         # ensure no 404's
-        if r:
-            soup = BeautifulSoup(r.content, "html.parser")
+        if not r:
+            log.debug("Couldn't access profile site: %s", fb_general)
+            return
 
-            # scrape creation date
-            created_at = soup.find('div', {"class" : "_3qn7"})
-            created_at = created_at.select_one("span").text
+        soup = BeautifulSoup(r.content, "html.parser")
 
-            created_at = re.sub(r"(Seite erstellt)", "", created_at)
+        # scrape creation date
+        created_at = soup.find('div', {"class" : "_3qn7"})
+        created_at = created_at.select_one("span").text
 
-            created_at = created_at[3:]
+        created_at = re.sub(r"(Seite erstellt)", "", created_at)
 
-            # scrape n of likes
-            # find span with like number
-            spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
-            # isolate likes via regex
-            likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
+        created_at = created_at[3:]
 
-            bio_dict = {"username" : fb_general,
-                        "n_likes" : likes,
-                        "created_at": created_at}
+        # scrape n of likes
+        # find span with like number
+        spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
+        # isolate likes via regex
+        likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
+
+        bio_dict = {"username" : fb_general,
+                    "n_likes" : likes,
+                    "created_at": created_at}
 
         # request about html
         r_about = requests.get(fb_about)
 
         # ensure no 404's
-        if r_about:
+        if not r_about:
+            log.debug("Couldn't access username/about site: %s", fb_about)
+            return
 
-            about_soup = BeautifulSoup(r_about.content, "html.parser")
-            mission_text = about_soup.find_all('div', {'class' : "_4bl9"})
 
-            for divs in mission_text:
-                describing_div = divs.find('div', {'class': '_50f4'})
-                content_div = divs.find('div', {'class': '_3-8w'})
+        about_soup = BeautifulSoup(r_about.content, "html.parser")
+        mission_text = about_soup.find_all('div', {'class' : "_4bl9"})
 
-                if describing_div and content_div:
-                    bio_dict[describing_div.text] = content_div.text
+        for divs in mission_text:
+            describing_div = divs.find('div', {'class': '_50f4'})
+            content_div = divs.find('div', {'class': '_3-8w'})
+
+            if describing_div and content_div:
+                bio_dict[describing_div.text] = content_div.text
 
         # photos
         # Retrieves profile and cover photo of public facebook page
@@ -330,10 +343,10 @@ class FacebookHarvester(BaseHarvester):
                     # isolate relevant links
                     links = re.findall(r'https\:\\/\\/scontent[^"]*', content)
 
-        # remove escaped front slashes
-        for val, link in enumerate(links):
-            links[val] = re.sub(r'\\', "", link)
-            self._harvest_media_url(links[val])
+                    # remove escaped front slashes
+                    for val, link in enumerate(links):
+                        links[val] = re.sub(r'\\', "", link)
+                        self._harvest_media_url(links[val])
 
         if m_fb_general:
 
