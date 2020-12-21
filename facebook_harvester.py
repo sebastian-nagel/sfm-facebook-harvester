@@ -270,7 +270,8 @@ class FacebookHarvester(BaseHarvester):
         user_password_fb = self.message['credentials']['user_password_fb']
 
         # ensure username is clean and can be accessed
-        if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/"):
+        if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/") \
+        or username.startswith("www.facebook.com/"):
 
             username = re.sub(r'^.+facebook\.com\/', '', username)
             # possibly also remove trailing /
@@ -284,31 +285,97 @@ class FacebookHarvester(BaseHarvester):
         m_fb_general = "http://m.facebook.com/" + username
 
         # request the html
-        r = requests.get(fb_general)
-        # ensure no 404's
-        if not r:
-            log.debug("Couldn't access profile site: %s", fb_general)
-            return
-
-        soup = BeautifulSoup(r.content, "html.parser")
+        # r = requests.get(fb_general)
+        # # ensure no 404's
+        # if not r:
+        #     log.debug("Couldn't access profile site: %s", fb_general)
+        #     return
+        #
+        # soup = BeautifulSoup(r.content, "html.parser")
 
         # scrape creation date
-        created_at = soup.find('div', {"class" : "_3qn7"})
-        created_at = created_at.select_one("span").text
-
-        created_at = re.sub(r"(Seite erstellt)", "", created_at)
-
-        created_at = created_at[3:]
+        # created_at = soup.find('div', {"class" : "s9t1a10h"})
+        # created_at = created_at.select_one("span").text
+        # could be used to extract exact date without text
+        # however, this may differ across languages and pages
+        # created_at = re.sub(r"(Seite erstellt)", "", created_at)
+        # created_at = created_at[3:]
 
         # scrape n of likes
         # find span with like number
-        spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
-        # isolate likes via regex
-        likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
+        # spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
+        # # isolate likes via regex
+        # likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
+        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
+        site_transparency_class_selector = "._a58._a5o._9_7._2rgt._1j-g._2rgt._86-3._2rgt._1j-g._2rgt"
+        site_transparency_detail_id = "u_0_d"
 
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('headless')
+        chrome_options.add_argument('start-maximised')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--window-size=1200x800')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument(f"user-agent={user_agent}")
+
+        # this will connect to the selenium container starting scraping
+        driver = webdriver.Remote("host.docker.internal:4444/wd/hub", {'browserName': 'chrome'})
+        driver.get("http://m.facebook.com")
+        driver.maximize_window()
+        # accept cookies
+        cookies = driver.find_element_by_id('accept-cookie-banner-label')
+        # more or less random wait to replicate user behavior, ensure politeness
+        time.sleep(random.uniform(3,9))
+        cookies.click()
+        # Search & Enter the Email or Phone field & Enter Password
+        username_fb = driver.find_element_by_id("m_login_email")
+        password_fb = driver.find_element_by_id("m_login_password")
+        submit  = driver.find_element_by_css_selector("._56b_")
+        # send keys and make sure not prepolutaed
+        # 2fa has to be deactivated
+        username_fb.clear()
+        password_fb.clear()
+        username_fb.send_keys(user_email_fb)
+        password_fb.send_keys(user_password_fb)
+        time.sleep(random.uniform(3,9))
+        # Step 4) Click Login
+        submit.click()
+        time.sleep(random.uniform(3,9))
+        # navigate to site
+        driver.get(m_fb_general)
+        time.sleep(random.uniform(3,9))
+        # site info only loads on scroll
+        driver.execute_script("window.scrollTo(0, 800)")
+
+        # extract likes
+        site_likes_xpath = "//div[@class=\"_59k _2rgt _1j-f _2rgt\"]"
+        likes = driver.find_elements_by_xpath(site_likes_xpath)
+        # extract the relevant div
+        likes = [single_div.text for single_div in likes if "like this" in single_div.text]
+
+        # use class name and div content (todo)
+        time.sleep(random.uniform(20, 25))
+        element = WebDriverWait(driver, 20).until(
+                ec.presence_of_element_located((By.CSS_SELECTOR, site_transparency_class_selector))
+            )
+        site_transparency = driver.find_elements_by_css_selector(site_transparency_class_selector)
+        #site transparency should always be below about
+        site_transparency[1].click()
+        time.sleep(random.uniform(20, 15))
+        # simply get the whole text of the transparency box of site
+        # the exact info can be extracted ex-post
+        element = WebDriverWait(driver, 20).until(
+                ec.presence_of_element_located((By.ID, site_transparency_detail_id))
+            )
+        time.sleep(random.uniform(3,9))
+        site_transparency_text = driver.find_element_by_id(site_transparency_detail_id).text
+        time.sleep(random.uniform(3,9))
+        driver.close()
+        log.info("Finished scraping transparency box")
         bio_dict = {"username" : fb_general,
-                    "n_likes" : likes,
-                    "created_at": created_at}
+                    "n_likes" : likes[0],
+                    "transparency_text" : site_transparency_text}
+
 
         # request about html
         r_about = requests.get(fb_about)
@@ -347,73 +414,8 @@ class FacebookHarvester(BaseHarvester):
                     for val, link in enumerate(links):
                         links[val] = re.sub(r'\\', "", link)
                         self._harvest_media_url(links[val])
-
-        if m_fb_general:
-
-            user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
-            site_transparency_class_selector = "._a58._a5o._9_7._2rgt._1j-g._2rgt._86-3._2rgt._1j-g._2rgt"
-            site_transparency_detail_id= "u_0_d"
-
-            chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument('headless')
-            chrome_options.add_argument('start-maximised')
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--window-size=1200x800')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument(f"user-agent={user_agent}")
-
-            # this will connect to the selenium container starting scraping
-            driver = webdriver.Remote("host.docker.internal:4444/wd/hub", {'browserName': 'chrome'})
-            driver.get("http://m.facebook.com")
-            driver.maximize_window()
-            # accept cookies
-            cookies = driver.find_element_by_id('accept-cookie-banner-label')
-            # more or less random wait to replicate user behavior, ensure politeness
-            time.sleep(random.uniform(3,9))
-            cookies.click()
-            # Search & Enter the Email or Phone field & Enter Password
-            username_fb = driver.find_element_by_id("m_login_email")
-            password_fb = driver.find_element_by_id("m_login_password")
-            submit  = driver.find_element_by_css_selector("._56b_")
-            # send keys and make sure not prepolutaed
-            # 2fa has to be deactivated
-            username_fb.clear()
-            password_fb.clear()
-            username_fb.send_keys(user_email_fb)
-            password_fb.send_keys(user_password_fb)
-            time.sleep(random.uniform(3,9))
-            # Step 4) Click Login
-            submit.click()
-            time.sleep(random.uniform(3,9))
-            # navigate to site
-            driver.get(m_fb_general)
-            time.sleep(random.uniform(3,9))
-            driver.execute_script("window.scrollTo(0, 800)")
-            # site info only loads on scroll
-            # use class name and div content (todo)
-            time.sleep(random.uniform(20, 25))
-            element = WebDriverWait(driver, 20).until(
-                    ec.presence_of_element_located((By.CSS_SELECTOR, site_transparency_class_selector))
-                )
-            site_transparency = driver.find_elements_by_css_selector(site_transparency_class_selector)
-            #site transparency should always be below about
-            site_transparency[1].click()
-            time.sleep(random.uniform(20, 15))
-            # simply get the whole text of the transparency box of site
-            # the exact info can be extracted ex-post
-            element = WebDriverWait(driver, 20).until(
-                    ec.presence_of_element_located((By.ID, site_transparency_detail_id))
-                )
-            time.sleep(random.uniform(3,9))
-            site_transparency_text = driver.find_element_by_id(site_transparency_detail_id).text
-            time.sleep(random.uniform(3,9))
-            driver.close()
-            log.info("Finished scraping transparency box")
-            bio_dict['transparency_text'] = site_transparency_text
-
-
-        # ensure that only warc will be written if sites were found
-        # else nothing will happen
+                # ensure that only warc will be written if sites were found
+                # else nothing will happen
         if r_about or r:
             # filename will later be converted to path
             # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
@@ -441,63 +443,6 @@ class FacebookHarvester(BaseHarvester):
                                                     warc_content_type = "application/json")
                 writer.write_record(record)
                 log.info("Writing scraped results to %s", self.warc_temp_dir)
-
-    def facebook_user_ads(self, username, nsid, iso2c, access_token):
-        assert username or nsid
-
-        limit_per_page = 500
-
-        if username and not nsid:
-            log.debug("No FB userid, retrieving it")
-
-            nsid = self.get_fbid(username)
-
-
-
-        if nsid and access_token and iso2c:
-            # start scraping
-            request_url = "https://graph.facebook.com/v5.0/ads_archive"
-            request_params =  {"access_token": access_token,
-            "limit": limit_per_page,
-            "search_page_ids": str(nsid),
-            "ad_active_status": "ALL",
-            "ad_reached_countries": iso2c, # todo
-            "fields": "page_name, page_id, funding_entity, ad_creation_time, ad_delivery_start_time, ad_delivery_stop_time, ad_creative_body, ad_creative_link_caption, ad_creative_link_description, ad_creative_link_title, ad_snapshot_url, demographic_distribution, region_distribution, impressions, spend, currency"
-                    }
-
-            api_result = requests.get(request_url, params = request_params)
-
-            print(api_result.text)
-
-            random_token = ''.join(random.sample('abcdefghijklmnopqrstuvwxyz0123456789', 8))
-            serial_no = '00000'
-            file_name = safe_string(self.message["id"]) + "-" + warcprox.timestamp17() + "-" + serial_no + "-" + random_token
-
-            # write to warc
-            with open(os.path.join(self.warc_temp_dir, file_name + ".warc.gz"), "wb") as result_warc_file:
-                log.info("Writing json-timeline result to path %s", self.warc_temp_dir)
-                writer = WARCWriter(result_warc_file, gzip = True)
-
-                def json_date_converter(o):
-                    """ Converts datetime.datetime items in facebook_scraper result
-                    to formate suitable for json.dumps"""
-                    if isinstance(o, datetime.datetime):
-                        return o.__str__()
-
-                json_payload = json.dumps(api_result.json(), default = json_date_converter,
-                                          ensure_ascii = False).encode("utf-8")
-
-
-                record = writer.create_warc_record("https://m.facebook.com/" + username, 'metadata',
-                                                    payload = BytesIO(json_payload),
-                                                    warc_content_type = "application/json")
-                writer.write_record(record)
-                log.info("Writing scraped results to %s", self.warc_temp_dir)
-            time.sleep(1.2) # sleep to avoid getting blocked by api
-
-        else:
-            log.debug("Something went wrong. Is some information missing? Access token is: %s, iso2c is: %s",
-                        str(access_token), str(iso2c))
 
 
 
