@@ -163,7 +163,7 @@ class FacebookHarvester(BaseHarvester):
                     # for the stream, if not (e.g. video) it will not harvest
                     [self._harvest_media_url(media_url) for media_url in post['images'] if 'jpg' in media_url]
 
-                if incremental and post["post_id"] == since_id:
+                if incremental and post["post_id"] == since_id and post["post_id"]:
                     log.info("Stopping, found last post that was previously harvested with id: %s", post["post_id"])
                     break
 
