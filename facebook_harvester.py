@@ -319,7 +319,8 @@ class FacebookHarvester(BaseHarvester):
         chrome_options.add_argument(f"user-agent={user_agent}")
 
         # this will connect to the selenium container starting scraping
-        driver = webdriver.Remote("host.docker.internal:4444/wd/hub", {'browserName': 'chrome'})
+        # Note: host name of the running container is "selenium"
+        driver = webdriver.Remote("http://selenium:4444/wd/hub", {'browserName': 'chrome'})
         driver.get("http://m.facebook.com")
         driver.maximize_window()
         # accept cookies
