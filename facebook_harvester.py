@@ -194,9 +194,7 @@ class FacebookHarvester(BaseHarvester):
                 writer.write_record(record)
                 log.info("Writing scraped results to %s", self.warc_temp_dir)
 
-            # write to state store
-            incremental = self.message.get("options", {}).get("incremental", False)
-
+            # write most recent post ID to state store
             key = "timeline.{}.since_id".format(nsid)
             max_post_time = scrape_result[0].get("time")
             max_post_id = scrape_result[0].get("post_id")
@@ -204,10 +202,9 @@ class FacebookHarvester(BaseHarvester):
             assert max_post_time and max_post_id
 
             if incremental:
-
-                self.state_store.set_state(__name__, key, max_post_id) if incremental else None
-
-                log.info("Wrote first scraped post to state_store")
+                self.state_store.set_state(__name__, key, max_post_id)
+                log.info("Wrote first scraped post to state_store: %s (state: %s)",
+                         max_post_id, key)
 
 
         else:
