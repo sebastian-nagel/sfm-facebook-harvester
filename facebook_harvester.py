@@ -76,6 +76,10 @@ class FacebookHarvester(BaseHarvester):
 
         # getting id, still a little crude, todo
         id = soup.find('meta', {"property" : "al:android:url"})
+        if not id:
+            log.error("Facebook ID not found in request: %s", r)
+            log.info("Metadata elements found: %s", soup.find_all('meta'))
+            raise ValueError("Facebook ID not found")
         id = id.get('content')
 
         if id.endswith('?referrer=app_link'):
