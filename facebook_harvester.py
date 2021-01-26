@@ -59,6 +59,8 @@ class FacebookHarvester(BaseHarvester):
         FB Link, if not this will construct it from the username.
         """
 
+        headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"}
+
 
         if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
 
@@ -70,7 +72,7 @@ class FacebookHarvester(BaseHarvester):
             # possibly add www.facebook.com
             username = base_fb_url + str(username)
 
-        r = requests.get(username)
+        r = requests.get(username, headers = headers)
 
         soup = BeautifulSoup(r.content, "html.parser")
 
@@ -133,18 +135,28 @@ class FacebookHarvester(BaseHarvester):
         # make sure either username or nsid is present to start scraping
         assert username or nsid
 
-        # Possibly look up username
+        # possibly get fbid from state.json
+        if not nsid:
+            nsid = self.state_store.get_state(__name__, u"timeline.{}.fbid".format(username))
+            log.info("Trying to retrieve FB-ID from state store")
+            log.info("Found FB-ID from state store is %s", nsid)
+
+
+        # Possibly look up fbid if not supplied and not already in state.json
         if username and not nsid:
 
             log.debug("No FB userid, retrieving it")
 
             nsid = self.get_fbid(username)
+            # write id to state.json if not already there
+            key = "timeline.{}.fbid".format(username)
+            self.state_store.set_state(__name__, key, nsid)
+            log.info("Writing fbid to state store")
 
         if nsid:
             # report back whether user id was found
             log.info("FB userid %s", nsid)
             # todo - need to add timeout and what to do if blocked
-            # todo - post ids will sometimes be empty, account for that for incremental
 
             incremental = self.message.get("options", {}).get("incremental", False)
             harvest_media = self.message.get("options", {}).get("harvest_media", False)
