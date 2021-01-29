@@ -53,12 +53,65 @@ class FacebookHarvester(BaseHarvester):
         self.harvest_media_types = { 'photo': True }
 
 
+    def initiate_selenium_webdriver(self):
+        """
+        Instantiates selenium webdriver with docker connection for sfm
+        Closing should take place outside of this function!
+        """
+        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
+
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('headless')
+        chrome_options.add_argument('start-maximised')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--window-size=1200x800')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument(f"user-agent={user_agent}")
+
+        # this will connect to the selenium container starting scraping
+        # Note: host name of the running container is "selenium"
+        driver = webdriver.Remote("http://selenium:4444/wd/hub", {'browserName': 'chrome'})
+        return driver
+
+    def fb_login(self, driver):
+        """
+        Logs into fb via selenium via a preexisting selenium session
+        """
+
+        user_email_fb = self.message['credentials']['user_email_fb']
+        user_password_fb = self.message['credentials']['user_password_fb']
+
+
+        driver.get("http://m.facebook.com")
+        driver.maximize_window()
+        # accept cookies
+        cookies = driver.find_element_by_id('accept-cookie-banner-label')
+        # more or less random wait to replicate user behavior, ensure politeness
+        time.sleep(random.uniform(3,9))
+        cookies.click()
+        # Search & Enter the Email or Phone field & Enter Password
+        username_fb = driver.find_element_by_id("m_login_email")
+        password_fb = driver.find_element_by_id("m_login_password")
+        submit  = driver.find_element_by_css_selector("._56b_")
+        # send keys and make sure not prepolutaed
+        # 2fa has to be deactivated
+        username_fb.clear()
+        password_fb.clear()
+        username_fb.send_keys(user_email_fb)
+        password_fb.send_keys(user_password_fb)
+        time.sleep(random.uniform(3,9))
+        # Step 4) Click Login
+        submit.click()
+
+
+
+
+
     def get_fbid(self, username):
         """
         Attempts to scrape fb id from fb pages. Username should be full
         FB Link, if not this will construct it from the username.
         """
-
         headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"}
 
 
@@ -72,16 +125,23 @@ class FacebookHarvester(BaseHarvester):
             # possibly add www.facebook.com
             username = base_fb_url + str(username)
 
-        r = requests.get(username, headers = headers)
+        driver = self.initiate_selenium_webdriver()
+        self.fb_login(driver = driver)
 
-        soup = BeautifulSoup(r.content, "html.parser")
+        driver.get(username)
 
+        # r = requests.get(username, headers = headers)
+        # parse with bs4 - we could also do this with
+        # selenium but this enables us to reuse 'old' code instead of rewriting
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.quit()
         # getting id, still a little crude, todo
         id = soup.find('meta', {"property" : "al:android:url"})
         if not id:
-            log.error("Facebook ID not found in request: %s", r)
+            log.error("Facebook ID not found in request to site: %s", username)
             log.info("Metadata elements found: %s", soup.find_all('meta'))
             raise ValueError("Facebook ID not found")
+
         id = id.get('content')
 
         if id.endswith('?referrer=app_link'):
@@ -279,8 +339,6 @@ class FacebookHarvester(BaseHarvester):
         @param username: Facebook username
         @return: a dictionary of account attributes """
 
-        user_email_fb = self.message['credentials']['user_email_fb']
-        user_password_fb = self.message['credentials']['user_password_fb']
 
         # ensure username is clean and can be accessed
         if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/") \
@@ -295,7 +353,7 @@ class FacebookHarvester(BaseHarvester):
         # bio info
         fb_about = base_fb_url +  username + "/about/?ref=page_internal"
         # site transparency (e.g. admins)
-        m_fb_general = "http://m.facebook.com/" + username
+        m_fb_general = "https://m.facebook.com/" + username
 
         # request the html
         # r = requests.get(fb_general)
@@ -319,41 +377,12 @@ class FacebookHarvester(BaseHarvester):
         # spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
         # # isolate likes via regex
         # likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
-        user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
-        site_transparency_class_selector = "._a58._a5o._9_7._2rgt._1j-g._2rgt._86-3._2rgt._1j-g._2rgt"
         site_transparency_detail_id = "u_0_d"
+        site_transparency_class_selector = "._a58._a5o._9_7._2rgt._1j-g._2rgt._86-3._2rgt._1j-g._2rgt"
 
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument('headless')
-        chrome_options.add_argument('start-maximised')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--window-size=1200x800')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument(f"user-agent={user_agent}")
+        driver = self.initiate_selenium_webdriver()
 
-        # this will connect to the selenium container starting scraping
-        # Note: host name of the running container is "selenium"
-        driver = webdriver.Remote("http://selenium:4444/wd/hub", {'browserName': 'chrome'})
-        driver.get("http://m.facebook.com")
-        driver.maximize_window()
-        # accept cookies
-        cookies = driver.find_element_by_id('accept-cookie-banner-label')
-        # more or less random wait to replicate user behavior, ensure politeness
-        time.sleep(random.uniform(3,9))
-        cookies.click()
-        # Search & Enter the Email or Phone field & Enter Password
-        username_fb = driver.find_element_by_id("m_login_email")
-        password_fb = driver.find_element_by_id("m_login_password")
-        submit  = driver.find_element_by_css_selector("._56b_")
-        # send keys and make sure not prepolutaed
-        # 2fa has to be deactivated
-        username_fb.clear()
-        password_fb.clear()
-        username_fb.send_keys(user_email_fb)
-        password_fb.send_keys(user_password_fb)
-        time.sleep(random.uniform(3,9))
-        # Step 4) Click Login
-        submit.click()
+        self.fb_login(driver = driver)
         time.sleep(random.uniform(3,9))
         # navigate to site
         driver.get(m_fb_general)
@@ -373,9 +402,10 @@ class FacebookHarvester(BaseHarvester):
                 ec.presence_of_element_located((By.CSS_SELECTOR, site_transparency_class_selector))
             )
         site_transparency = driver.find_elements_by_css_selector(site_transparency_class_selector)
-        #site transparency should always be below about
+        # site transparency should always be below about
+        time.sleep(random.uniform(5, 9))
         site_transparency[1].click()
-        time.sleep(random.uniform(20, 15))
+        time.sleep(random.uniform(15, 20))
         # simply get the whole text of the transparency box of site
         # the exact info can be extracted ex-post
         element = WebDriverWait(driver, 20).until(
@@ -384,12 +414,11 @@ class FacebookHarvester(BaseHarvester):
         time.sleep(random.uniform(3,9))
         site_transparency_text = driver.find_element_by_id(site_transparency_detail_id).text
         time.sleep(random.uniform(3,9))
-        driver.close()
+        driver.quit()
         log.info("Finished scraping transparency box")
         bio_dict = {"username" : fb_general,
                     "n_likes" : likes[0],
                     "transparency_text" : site_transparency_text}
-
 
         # request about html
         r_about = requests.get(fb_about)
