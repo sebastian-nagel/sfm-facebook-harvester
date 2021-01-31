@@ -220,6 +220,10 @@ class FacebookHarvester(BaseHarvester):
 
             incremental = self.message.get("options", {}).get("incremental", False)
             harvest_media = self.message.get("options", {}).get("harvest_media", False)
+            if harvest_media:
+                # disable verbose logging of the state store to avoid overlong log messages
+                # (the state store holds the list of all harvested media URLs)
+                self.state_store.verbose = False
 
             if incremental:
                 # search for since_id of post
