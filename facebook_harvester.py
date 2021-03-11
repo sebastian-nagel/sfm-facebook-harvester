@@ -377,7 +377,7 @@ class FacebookHarvester(BaseHarvester):
         # spans = soup.find('span', {"class" : "_52id _50f5 _50f7"})
         # # isolate likes via regex
         # likes = re.search(r'^[\d]+.[^\s]+', spans.text).group()
-        site_transparency_detail_id = "u_0_d"
+        site_transparency_detail_id_selector = "div[id^='u_0_d']"
         site_transparency_class_selector = "._a58._a5o._9_7._2rgt._1j-g._2rgt._86-3._2rgt._1j-g._2rgt"
 
         driver = self.initiate_selenium_webdriver()
@@ -409,10 +409,10 @@ class FacebookHarvester(BaseHarvester):
         # simply get the whole text of the transparency box of site
         # the exact info can be extracted ex-post
         element = WebDriverWait(driver, 20).until(
-                ec.presence_of_element_located((By.ID, site_transparency_detail_id))
+                ec.presence_of_element_located((By.CSS_SELECTOR, site_transparency_detail_id_selector))
             )
         time.sleep(random.uniform(3,9))
-        site_transparency_text = driver.find_element_by_id(site_transparency_detail_id).text
+        site_transparency_text = driver.find_element_by_css_selector(site_transparency_detail_id_selector).text
         time.sleep(random.uniform(3,9))
         driver.quit()
         log.info("Finished scraping transparency box")
