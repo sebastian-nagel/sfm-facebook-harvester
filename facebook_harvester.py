@@ -115,41 +115,33 @@ class FacebookHarvester(BaseHarvester):
         headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"}
 
 
-        if username.startswith("https://www.facebook.com/") == False and username.startswith("http://www.facebook.com/") == False:
+        if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/") == False:
 
+            username = username.replace("https://www.facebook.com/", "")
+            username = username.replace("http://www.facebook.com/", "")
             # catch weird fb urls (e.g. https://es-es.facebook.com/ehbildu/)
             # as of 2020/12 deactivated to ensure continuity between provided seeds
             # and harvested seeds
             # username = re.sub(r'^.+facebook\.[a-z]+/', '', username)
 
-            # possibly add www.facebook.com
-            username = base_fb_url + str(username)
+        username_m = "https://m.facebook.com/" + str(username)
 
-        driver = self.initiate_selenium_webdriver()
-        self.fb_login(driver = driver)
+        fb_page_m = requests.get("https://m.facebook.com/frelimo", headers = headers)
 
-        driver.get(username)
+        if fb_page_m.status_code != 200:
+            raise ValueError("FB page could not be retrieved, status code: ", fb_page_m.status_code)
 
-        # r = requests.get(username, headers = headers)
-        # parse with bs4 - we could also do this with
-        # selenium but this enables us to reuse 'old' code instead of rewriting
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        driver.quit()
-        # getting id, still a little crude, todo
-        id = soup.find('meta', {"property" : "al:android:url"})
-        if not id:
+        soup = BeautifulSoup(fb_page_m.text, "html.parser")
+
+        right_tag = soup.find('div', {"data-ft": re.compile(r'page_id')})
+        page_id = re.findall(r"page_id\"\:\"(\d+)", right_tag['data-ft'])[0]
+
+        if not page_id:
             log.error("Facebook ID not found in request to site: %s", username)
-            log.info("Metadata elements found: %s", soup.find_all('meta'))
+            log.info("Div elements found: %s", soup.find_all('div', {"data-ft": re.compile(r'page_id')}))
             raise ValueError("Facebook ID not found")
 
-        id = id.get('content')
-
-        if id.endswith('?referrer=app_link'):
-            id = id[:-18]
-        if id.startswith('fb://page/'):
-            id = id[10:]
-
-        return(id)
+        return(page_id)
 
 
 
