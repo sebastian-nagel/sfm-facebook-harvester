@@ -127,7 +127,7 @@ class FacebookHarvester(BaseHarvester):
 
         username_m = "https://m.facebook.com/" + str(username)
 
-        fb_page_m = requests.get("https://m.facebook.com/frelimo", headers = headers)
+        fb_page_m = requests.get(username_m)
 
         if fb_page_m.status_code != 200:
             raise ValueError("FB page could not be retrieved, status code: ", fb_page_m.status_code)
