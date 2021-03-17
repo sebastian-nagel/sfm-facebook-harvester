@@ -115,10 +115,11 @@ class FacebookHarvester(BaseHarvester):
         headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"}
 
 
-        if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/") == False:
+        if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/") or username.startswith("www.facebook.com/"):
 
             username = username.replace("https://www.facebook.com/", "")
             username = username.replace("http://www.facebook.com/", "")
+            username = username.replace("www.facebook.com/", "")
             # catch weird fb urls (e.g. https://es-es.facebook.com/ehbildu/)
             # as of 2020/12 deactivated to ensure continuity between provided seeds
             # and harvested seeds
