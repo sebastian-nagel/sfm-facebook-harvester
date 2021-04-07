@@ -179,10 +179,10 @@ class FacebookHarvester(BaseHarvester):
         log.debug("Harvesting users with seeds %s", self.message.get("seeds"))
 
         for seed in self.message.get("seeds", []):   #todo
-            self.facebook_user_timeline(seed_id = seed.get("id"), username = seed.get("token"), nsid = seed.get("uid"))
+            self.facebook_user_timeline(seed_id=seed.get("id"), username=seed.get("token"), nsid=seed.get("uid"))
 
-
-    def facebook_user_timeline(self, seed_id, username, nsid):
+    def facebook_user_timeline(self, seed_id, username, nsid,
+                               sleep_between_harvests=True):
         """This function will scrape the user timeline"""
         log.debug("Harvesting user %s with seed_id %s.", username, seed_id)
         # make sure either username or nsid is present to start scraping
@@ -289,12 +289,15 @@ class FacebookHarvester(BaseHarvester):
                 log.info("Wrote first scraped post to state_store: %s (state: %s)",
                          max_post_id, key)
 
-
         else:
             msg = "NSID not found for user {}".format(username)
             log.exception(msg)
             self.result.warnings.append(Msg(CODE_UID_NOT_FOUND, msg, seed_id=seed_id))
-        # todo: deal with blocking (i.e.: wait 24 hours until resuming harvest)
+
+        # sleep approx. 15 min before starting next harvest to ensure politness
+        if sleep_between_harvests:
+            log.info("Waiting approx. 15 before next harvest")
+            time.sleep(random.uniform(850, 950))
 
     def _harvest_media_url(self, url):
 
@@ -312,7 +315,7 @@ class FacebookHarvester(BaseHarvester):
             media_urls[url] = str(datetime.datetime.fromtimestamp(time.time()))
             self.state_store.set_state(__name__, 'media.urls', media_urls)
 
-            time.sleep(2.5) # must sleep to ensure politeness and avoid blocking
+            time.sleep(2.5)  # must sleep to ensure politeness, avoid blocking
 
         except Exception:
             log.exception("Failed to harvest media URL %s with exception:", url)
@@ -334,8 +337,8 @@ class FacebookHarvester(BaseHarvester):
                 key = "bio.{}".format(username)
                 self.state_store.set_state(__name__, key, True)
                 # for a large number of sites we avoid to many requests
-                # also adding random  float number between 0 and 1 todo via random.random
-                time.sleep((5))
+                # also adding random  float number
+                time.sleep(random.uniform(5, 10))
             elif prev_harvest:
                 log.info("Bio of this account has already been harvested - stopping")
 
@@ -345,7 +348,6 @@ class FacebookHarvester(BaseHarvester):
         on the information contained on the about page (e.g. https://www.facebook.com/pg/SPD/about/?ref=page_internal)
         @param username: Facebook username
         @return: a dictionary of account attributes """
-
 
         # ensure username is clean and can be accessed
         if username.startswith("https://www.facebook.com/") or username.startswith("http://www.facebook.com/") \
@@ -358,7 +360,7 @@ class FacebookHarvester(BaseHarvester):
         # created at field
         fb_general = base_fb_url + username
         # bio info
-        fb_about = base_fb_url +  username + "/about/?ref=page_internal"
+        fb_about = base_fb_url + username + "/about/?ref=page_internal"
         # site transparency (e.g. admins)
         m_fb_general = "https://m.facebook.com/" + username
 
