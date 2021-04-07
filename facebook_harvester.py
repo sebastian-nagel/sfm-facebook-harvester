@@ -49,7 +49,7 @@ class FacebookHarvester(BaseHarvester):
         self.connection_errors = connection_errors
         self.http_errors = http_errors
         # pages attribute for facebookscarper - how far 'back' should the scraper look?
-        self.pages = 1000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
+        self.pages = 10000 # this is the number of pages that facebook_scraper will scrape - could later be adapted
         self.harvest_media_types = { 'photo': True }
 
 
@@ -194,7 +194,6 @@ class FacebookHarvester(BaseHarvester):
             log.info("Trying to retrieve FB-ID from state store")
             log.info("Found FB-ID from state store is %s", nsid)
 
-
         # Possibly look up fbid if not supplied and not already in state.json
         if username and not nsid:
 
@@ -224,12 +223,23 @@ class FacebookHarvester(BaseHarvester):
 
             scrape_result = []
 
+            # check if blocked, usually lasts 24 hours
+            if "Temporarily Blocked" in requests.get("https://m.facebook.com/" + nsid).text:
+                # sleep 24 hours
+                log.debug("Temporarily blocked - waiting 24 hours")
+                time.sleep(86429)
+
+
             for post in facebook_scraper.get_posts(nsid, pages = self.pages, extra_info = True, timeout = 20):
                 scrape_result.append(post)
                 self.result.harvest_counter["posts"] += 1
                 self.result.increment_stats("posts")
+                # add random sleep time for politeness
+                # this will increase the scraping time for pages with a lot of posts!
+                time.sleep(random.uniform(0, 2))
 
-                if harvest_media and post['images']: #last condition avoids parsing empty lists (i.e. no media)
+                # last condition avoids parsing empty lists (i.e. no media)
+                if harvest_media and post['images']:
                     log.info("Harvesting media from post")
                     # get media content from links - should automatically be caught within warc stream
                     # all photos on fb are jpgs, so the list comprehension checks whether this is the case
@@ -456,7 +466,7 @@ class FacebookHarvester(BaseHarvester):
                         self._harvest_media_url(links[val])
                 # ensure that only warc will be written if sites were found
                 # else nothing will happen
-        if r_about or r:
+        if r_about:
             # filename will later be converted to path
             # replicating pattern from https://github.com/internetarchive/warcprox/blob/f19ead00587633fe7e6ba6e3292456669755daaf/warcprox/writer.py#L69
             # create random token for filename
