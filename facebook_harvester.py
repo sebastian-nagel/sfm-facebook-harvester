@@ -277,17 +277,25 @@ class FacebookHarvester(BaseHarvester):
                 writer.write_record(record)
                 log.info("Writing scraped results to %s", self.warc_temp_dir)
 
-            # write most recent post ID to state store
-            key = "timeline.{}.since_id".format(nsid)
-            max_post_time = scrape_result[0].get("time")
-            max_post_id = scrape_result[0].get("post_id")
-
-            assert max_post_time and max_post_id
-
             if incremental:
-                self.state_store.set_state(__name__, key, max_post_id)
-                log.info("Wrote first scraped post to state_store: %s (state: %s)",
-                         max_post_id, key)
+                # some posts will have post["post_id"] None
+                # I take the latest post without a None id
+                # if no post with a post_id is found nothing will
+                # be written to the state store
+                latest_post = next((latest_post for latest_post in scrape_result if latest_post["post_id"] is not None),
+                                   None)
+
+                if latest_post:
+                    max_post_time = latest_post.get("time")
+                    max_post_id = latest_post.get("post_id")
+
+                    assert max_post_time and max_post_id
+                    # write most recent post ID to state store
+                    key = "timeline.{}.since_id".format(nsid)
+
+                    self.state_store.set_state(__name__, key, max_post_id)
+                    log.info("Wrote first scraped post to state_store: %s (state: %s)",
+                             max_post_id, key)
 
         else:
             msg = "NSID not found for user {}".format(username)
