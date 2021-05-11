@@ -134,8 +134,8 @@ class FacebookHarvester(BaseHarvester):
 
         soup = BeautifulSoup(fb_page_m.text, "html.parser")
 
-        right_tag = soup.find('div', {"data-ft": re.compile(r'page_id')})
-        page_id = re.findall(r"page_id\"\:\"(\d+)", right_tag['data-ft'])[0]
+        right_tag = soup.find('a', {"href": re.compile(r'rid')})
+        page_id = re.findall(r"rid\=(\d+)", right_tag['href'])[0]
 
         if not page_id:
             log.error("Facebook ID not found in request to site: %s", username)
