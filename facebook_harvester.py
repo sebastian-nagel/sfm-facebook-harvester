@@ -70,7 +70,7 @@ class FacebookHarvester(BaseHarvester):
 
         # this will connect to the selenium container starting scraping
         # Note: host name of the running container is "selenium"
-        driver = webdriver.Remote("http://selenium:4444/wd/hub", {'browserName': 'chrome'})
+        driver = webdriver.Remote("http://selenium:4444/wd/hub", {'browserName': 'chrome'}, options=chrome_options)
         return driver
 
     def fb_login(self, driver):
